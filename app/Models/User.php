@@ -35,6 +35,16 @@ class User extends Authenticatable implements PasskeyUser
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
+    /**
+     * Defaults that match the database, so a freshly created user is active before it is reloaded.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'role' => self::ROLE_OFFICER,
+        'is_active' => true,
+    ];
+
     public const ROLE_ADMIN = 'admin';
 
     public const ROLE_OFFICER = 'officer';
