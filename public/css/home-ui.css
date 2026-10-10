@@ -481,3 +481,7 @@ button[disabled] {
         transition-duration: .001ms !important;
     }
 }
+
+
+/* Top bar stays above scrolling content */
+.topbar { position: sticky; top: 0; z-index: 1000; }

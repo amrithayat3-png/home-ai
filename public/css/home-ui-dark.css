@@ -447,3 +447,20 @@ body.theme-dark .btn.btn-danger {
 body.theme-dark .btn.btn-danger:hover {
     box-shadow: 0 14px 34px rgba(255, 107, 122, .42), inset 0 1px 0 rgba(255, 255, 255, .25) !important;
 }
+
+
+/* TOP BAR ALWAYS IN FRONT: bar sits above all scrolling content */
+body.theme-dark .topbar {
+    position: sticky !important;
+    top: 0;
+    z-index: 1000 !important;
+}
+body.theme-dark .container {
+    position: relative;
+    z-index: 1;
+}
+body.theme-dark .container > *,
+body.theme-dark .card,
+body.theme-dark .table-card {
+    z-index: auto;
+}
