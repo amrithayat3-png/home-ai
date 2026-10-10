@@ -32,6 +32,9 @@ RUN composer dump-autoload --optimize \
 # On start: migrate (AUTORUN) then seed demo data once. Data lives on the /data volume.
 COPY --chown=www-data:www-data docker/volume.sh /etc/entrypoint.d/20-volume.sh
 COPY --chown=www-data:www-data docker/seed.sh /etc/entrypoint.d/99-seed.sh
-USER root
 RUN chmod +x /etc/entrypoint.d/20-volume.sh /etc/entrypoint.d/99-seed.sh
-USER www-data
+
+# Railway mounts the volume as root. Start as root so the startup scripts can prepare /data
+# (and migrate), then hand everything to www-data and run the web server as www-data.
+USER root
+CMD ["sh", "-c", "chown -R 33:33 /data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null; exec setpriv --reuid=33 --regid=33 --init-groups /init"]
