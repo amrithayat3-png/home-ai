@@ -1,4 +1,10 @@
-# Stage 1: build the front-end assets
+# Stage 1: PHP packages (the front-end build needs Flux's CSS from vendor/)
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
+
+# Stage 2: build the front-end assets
 FROM node:22-bookworm-slim AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -6,9 +12,10 @@ RUN npm ci
 COPY vite.config.js ./
 COPY resources ./resources
 COPY public ./public
+COPY --from=vendor /app/vendor ./vendor
 RUN npm run build
 
-# Stage 2: PHP 8.4 with nginx
+# Stage 3: PHP 8.4 with nginx
 FROM serversideup/php:8.4-fpm-nginx
 ENV PHP_OPCACHE_ENABLE=1 \
     AUTORUN_ENABLED=true \
@@ -16,9 +23,8 @@ ENV PHP_OPCACHE_ENABLE=1 \
     AUTORUN_LARAVEL_STORAGE_LINK=false
 
 WORKDIR /var/www/html
-COPY --chown=www-data:www-data composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader
 COPY --chown=www-data:www-data . .
+COPY --chown=www-data:www-data --from=vendor /app/vendor ./vendor
 COPY --chown=www-data:www-data --from=assets /app/public/build ./public/build
 RUN composer dump-autoload --optimize \
     && php artisan package:discover --ansi
