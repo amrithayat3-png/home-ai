@@ -15,10 +15,6 @@ ENV PHP_OPCACHE_ENABLE=1 \
     AUTORUN_LARAVEL_MIGRATION=true \
     AUTORUN_LARAVEL_STORAGE_LINK=false
 
-USER root
-RUN install-php-extensions intl
-USER www-data
-
 WORKDIR /var/www/html
 COPY --chown=www-data:www-data composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader
