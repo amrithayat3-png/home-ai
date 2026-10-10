@@ -1210,6 +1210,30 @@
             .briefing-panel, .wide-panel { grid-column: auto; }
         }
 
+
+        /* SIDEBAR FIX: footer boxes flow under the menu, sidebar scrolls on short screens */
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+        }
+        .sidebar > * { flex-shrink: 0; }
+        .sidebar .user-box,
+        .sidebar .demo-label {
+            position: static;
+            width: auto;
+        }
+        .sidebar .user-box { margin-top: auto; }
+        .sidebar .demo-label { margin-top: 10px; margin-bottom: 4px; }
+
+        @media (max-height: 900px) {
+            .brand { padding-bottom: 14px; }
+            .nav-item { padding-top: 9px; padding-bottom: 9px; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: .001ms !important;
