@@ -30,7 +30,8 @@ RUN composer dump-autoload --optimize \
     && php artisan package:discover --ansi
 
 # On start: migrate (AUTORUN) then seed demo data once. Data lives on the /data volume.
+COPY --chown=www-data:www-data docker/volume.sh /etc/entrypoint.d/20-volume.sh
 COPY --chown=www-data:www-data docker/seed.sh /etc/entrypoint.d/99-seed.sh
 USER root
-RUN chmod +x /etc/entrypoint.d/99-seed.sh
+RUN chmod +x /etc/entrypoint.d/20-volume.sh /etc/entrypoint.d/99-seed.sh
 USER www-data
