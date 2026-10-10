@@ -923,6 +923,44 @@
         .user-links button:hover {
             text-decoration: underline;
         }
+
+        /* Deadline badges and reminders */
+
+        .dl-badge {
+            white-space: nowrap;
+            padding: 5px 7px;
+            height: fit-content;
+            border-radius: 6px;
+            font-size: 8px;
+            background: rgba(255,255,255,.05);
+            color: var(--muted);
+        }
+
+        .dl-overdue { background: rgba(255,107,122,.12); color: var(--danger); }
+        .dl-today   { background: rgba(255,107,122,.08); color: #ff9aa5; }
+        .dl-soon    { background: rgba(245,184,91,.10); color: var(--warning); }
+        .dl-week    { background: rgba(92,169,255,.10); color: var(--blue); }
+
+        .rem-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .rem-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 8px;
+            cursor: pointer;
+        }
+
+        .rem-btn:hover {
+            border-color: var(--border-hover);
+            color: var(--text);
+        }
     </style>
 </head>
 
@@ -1124,6 +1162,13 @@
 
                 <button
                     class="suggestion"
+                    onclick="fillPrompt('What is urgent this week?')"
+                >
+                    What is urgent this week?
+                </button>
+
+                <button
+                    class="suggestion"
                     onclick="fillPrompt('Show pending actions')"
                 >
                     Show pending actions
@@ -1283,6 +1328,92 @@
 
         </section>
 
+
+        <!-- DEADLINE WATCH AND REMINDERS -->
+
+        <section class="lower">
+
+            <div class="panel">
+
+                <div class="panel-label">
+                    Deadline Watch (overdue and next 7 days)
+                </div>
+
+                @forelse ($dueSoon as $dueMatter)
+                    @php $badge = $dueMatter->deadlineBadge(); @endphp
+                    <div class="activity-item">
+
+                        <div class="activity-main">
+                            <strong>
+                                <a href="{{ route('matters.show', $dueMatter) }}" style="color: inherit; text-decoration: none;">
+                                    {{ $dueMatter->title }}
+                                </a>
+                            </strong>
+                            <span>
+                                {{ $dueMatter->matter_reference }}
+                                | {{ $dueMatter->section }}
+                                | {{ $dueMatter->priority }}
+                                | {{ \Illuminate\Support\Str::of($dueMatter->deadline)->substr(0, 10) }}
+                            </span>
+                        </div>
+
+                        @if ($badge)
+                            <div class="dl-badge dl-{{ $badge['level'] }}">{{ $badge['label'] }}</div>
+                        @endif
+
+                    </div>
+                @empty
+                    <div class="insight">
+                        Nothing is overdue or due in the next seven days.
+                    </div>
+                @endforelse
+
+            </div>
+
+            <div class="panel">
+
+                <div class="panel-label">
+                    Your Reminders ({{ $unreadReminders->count() }} unread)
+                </div>
+
+                @forelse ($unreadReminders as $reminder)
+                    <div class="insight">
+                        <strong>{{ $reminder->created_at->diffForHumans() }}</strong>
+                        @if ($reminder->matter)
+                            <a href="{{ route('matters.show', $reminder->matter) }}" style="color: inherit; text-decoration: none;">
+                                {{ $reminder->message }}
+                            </a>
+                        @else
+                            {{ $reminder->message }}
+                        @endif
+
+                        <div class="rem-actions">
+                            <form method="POST" action="{{ route('reminders.read', $reminder) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="rem-btn">Mark read</button>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <div class="insight">
+                        No unread reminders.
+                    </div>
+                @endforelse
+
+                @if ($unreadReminders->count() > 1)
+                    <div class="rem-actions">
+                        <form method="POST" action="{{ route('reminders.read-all') }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="rem-btn">Mark all read</button>
+                        </form>
+                    </div>
+                @endif
+
+            </div>
+
+        </section>
 
         <!-- LOWER SECTION -->
 

@@ -61,7 +61,7 @@ class AskHomeAi
 
     private function rules(): string
     {
-        $today = now()->format('l, j F Y');
+        $today = now(config('reminders.timezone', 'Asia/Karachi'))->format('l, j F Y');
 
         return <<<RULES
 You are HOME AI, an executive assistant for a government home department. Today is {$today}.
@@ -75,6 +75,7 @@ Answer the question using only the RECORDS provided. These rules are strict:
 6. Every time you mention a matter, include its reference number (for example HM-2026-004).
 7. The "due" notes in the RECORDS are already calculated for today. Trust them instead of recalculating.
 8. For a briefing request, cover: overdue matters, matters due within seven days, high priority matters, and matters waiting for executive direction.
+9. For a question about what is urgent, list only matters that are Open or Pending and either overdue or due within seven days. Put the highest priority first, then the earliest deadline, and show how many days are left or overdue.
 
 Return JSON only, in exactly this shape:
 {"answer": "your answer as plain text", "references": ["HM-2026-004"]}
@@ -84,7 +85,7 @@ RULES;
 
     private function records(): string
     {
-        $today = now()->startOfDay();
+        $today = Carbon::parse(now(config('reminders.timezone', 'Asia/Karachi'))->toDateString());
 
         $matterLines = Matter::orderBy('matter_reference')
             ->limit(self::MAX_MATTERS)

@@ -161,6 +161,21 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .dl-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            background: rgba(255,255,255,.06);
+        }
+
+        .dl-overdue { background: rgba(255,107,122,.16); color: #ff6b7a; }
+        .dl-today   { background: rgba(255,107,122,.10); color: #ff9aa5; }
+        .dl-soon    { background: rgba(245,184,91,.14); color: #f5b85b; }
+        .dl-week    { background: rgba(92,169,255,.14); color: #5ca9ff; }
     </style>
 </head>
 <body>
@@ -238,7 +253,13 @@
                             <td class="priority-{{ strtolower($matter->priority) }}">
                                 {{ $matter->priority }}
                             </td>
-                            <td>{{ $matter->deadline }}</td>
+                            <td>
+                                {{ \Illuminate\Support\Str::of($matter->deadline)->substr(0, 10) }}
+                                @php $badge = $matter->deadlineBadge(); @endphp
+                                @if ($badge)
+                                    <span class="dl-badge dl-{{ $badge['level'] }}">{{ $badge['label'] }}</span>
+                                @endif
+                            </td>
                             <td class="status-{{ strtolower($matter->status) }}">
                                 {{ $matter->status }}
                             </td>

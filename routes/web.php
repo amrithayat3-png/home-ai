@@ -4,6 +4,7 @@ use App\Http\Controllers\AskController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\MatterController;
+use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/matters', [DashboardController::class, 'matters'])->name('matters');
     Route::get('/matters/{matter}', [DashboardController::class, 'showMatter'])->whereNumber('matter')->name('matters.show');
+
+    Route::patch('/reminders/read-all', [ReminderController::class, 'markAllRead'])->name('reminders.read-all');
+    Route::patch('/reminders/{reminder}/read', [ReminderController::class, 'markRead'])->whereNumber('reminder')->name('reminders.read');
 
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->whereNumber('document')->name('documents.show');
