@@ -22,8 +22,9 @@
         .doc-link:hover { text-decoration: underline; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
-<body>
+<body class="theme-dark">
     <div class="topbar">
         <h1>HOME AI — Filed Documents</h1>
         @if (auth()->user()->canManageWork())

@@ -464,3 +464,9 @@ body.theme-dark .card,
 body.theme-dark .table-card {
     z-index: auto;
 }
+
+/* Documents pages */
+body.theme-dark .empty { color: var(--d-muted) !important; }
+body.theme-dark .filed { color: #5be0b0 !important; }
+body.theme-dark .review { color: #ffc977 !important; }
+body.theme-dark .move-form select { min-width: 220px; }

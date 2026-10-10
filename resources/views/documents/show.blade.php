@@ -32,8 +32,9 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
-<body>
+<body class="theme-dark">
     <div class="topbar">
         <h1>HOME AI: Document Details</h1>
         <a href="{{ route('documents.index') }}">Back to Documents</a>
