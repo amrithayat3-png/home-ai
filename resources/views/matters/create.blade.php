@@ -40,8 +40,9 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
-<body>
+<body class="theme-dark">
     <div class="topbar">
         <h1>HOME AI: New Matter</h1>
         <a href="{{ $document ? route('documents.show', $document) : route('matters') }}">Cancel</a>

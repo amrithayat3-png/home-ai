@@ -21,8 +21,9 @@
         select { border: 1px solid #d0d5dd; border-radius: 6px; box-sizing: border-box; font: inherit; margin-bottom: 8px; max-width: 100%; min-height: 40px; padding: 9px 11px; width: 100%; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
-<body>
+<body class="theme-dark">
     <div class="topbar">
         <h1>HOME AI — Upload & Classify</h1>
         <a href="{{ route('documents.index') }}">View Filed Documents</a>

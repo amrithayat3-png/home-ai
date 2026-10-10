@@ -1140,6 +1140,24 @@
             outline-offset: 2px;
         }
 
+
+        /* Two stacked columns: panels follow each other directly, whatever their heights */
+
+        .stack-cols { align-items: start; animation: none; }
+
+        .stack-col {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .stack-col > .panel { animation: hui-rise .6s cubic-bezier(.2,.7,.2,1) both; }
+        .stack-col:nth-child(1) > .panel:nth-child(1) { animation-delay: .34s; }
+        .stack-col:nth-child(1) > .panel:nth-child(2) { animation-delay: .4s; }
+        .stack-col:nth-child(2) > .panel:nth-child(1) { animation-delay: .37s; }
+        .stack-col:nth-child(2) > .panel:nth-child(2) { animation-delay: .43s; }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: .001ms !important;
@@ -1520,9 +1538,11 @@
         </section>
 
 
-        <!-- DEADLINE WATCH AND REMINDERS -->
+        <!-- DEADLINES, REMINDERS AND PRIORITIES (two stacked columns, so panels sit directly under each other with no gaps) -->
 
-        <section class="lower">
+        <section class="lower stack-cols">
+
+            <div class="stack-col">
 
             <div class="panel">
 
@@ -1559,56 +1579,11 @@
                     </div>
                 @endforelse
 
-            </div>
-
-            <div class="panel">
-
-                <div class="panel-label">
-                    Your Reminders ({{ $unreadReminders->count() }} unread)
+                <div class="rem-actions">
+                    <a class="ui-btn ghost" href="{{ route('matters') }}">See all matters</a>
                 </div>
 
-                @forelse ($unreadReminders as $reminder)
-                    <div class="insight">
-                        <strong>{{ $reminder->created_at->diffForHumans() }}</strong>
-                        @if ($reminder->matter)
-                            <a href="{{ route('matters.show', $reminder->matter) }}" style="color: inherit; text-decoration: none;">
-                                {{ $reminder->message }}
-                            </a>
-                        @else
-                            {{ $reminder->message }}
-                        @endif
-
-                        <div class="rem-actions">
-                            <form method="POST" action="{{ route('reminders.read', $reminder) }}">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="rem-btn">Mark read</button>
-                            </form>
-                        </div>
-                    </div>
-                @empty
-                    <div class="insight">
-                        No unread reminders.
-                    </div>
-                @endforelse
-
-                @if ($unreadReminders->count() > 1)
-                    <div class="rem-actions">
-                        <form method="POST" action="{{ route('reminders.read-all') }}">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="rem-btn">Mark all read</button>
-                        </form>
-                    </div>
-                @endif
-
             </div>
-
-        </section>
-
-        <!-- LOWER SECTION -->
-
-        <section class="lower">
 
             <!-- PRIORITY MATTERS -->
 
@@ -1647,6 +1622,58 @@
 
             </div>
 
+            </div>
+
+            <div class="stack-col">
+
+            <div class="panel">
+
+                <div class="panel-label">
+                    Your Reminders ({{ $unreadReminderCount }} unread)
+                </div>
+
+                @forelse ($unreadReminders->take(5) as $reminder)
+                    <div class="insight">
+                        <strong>{{ $reminder->created_at->diffForHumans() }}</strong>
+                        @if ($reminder->matter)
+                            <a href="{{ route('matters.show', $reminder->matter) }}" style="color: inherit; text-decoration: none;">
+                                {{ $reminder->message }}
+                            </a>
+                        @else
+                            {{ $reminder->message }}
+                        @endif
+
+                        <div class="rem-actions">
+                            <form method="POST" action="{{ route('reminders.read', $reminder) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="rem-btn">Mark read</button>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <div class="insight">
+                        No unread reminders.
+                    </div>
+                @endforelse
+
+                @if ($unreadReminderCount > 5)
+                    <div class="insight">
+                        and {{ $unreadReminderCount - 5 }} more unread. Mark these as read to see the next ones.
+                    </div>
+                @endif
+
+                @if ($unreadReminderCount > 1)
+                    <div class="rem-actions">
+                        <form method="POST" action="{{ route('reminders.read-all') }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="rem-btn">Mark all read</button>
+                        </form>
+                    </div>
+                @endif
+
+            </div>
 
             <!-- AI INSIGHTS -->
 
@@ -1677,6 +1704,8 @@
                     {{ $awaitingExecutiveDirection }} {{ \Illuminate\Support\Str::plural('matter', $awaitingExecutiveDirection) }}
                     {{ $awaitingExecutiveDirection === 1 ? 'is' : 'are' }} waiting for executive direction.
                 </div>
+
+            </div>
 
             </div>
 

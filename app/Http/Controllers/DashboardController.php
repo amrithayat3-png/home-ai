@@ -63,6 +63,8 @@ class DashboardController extends Controller
             ->limit(15)
             ->get();
 
+        $unreadReminderCount = Reminder::where('user_id', auth()->id())->whereNull('read_at')->count();
+
         $documentCount = Document::count();
 
         return view('home', [
@@ -75,6 +77,7 @@ class DashboardController extends Controller
             'priorityMatters' => $priorityMatters,
             'dueSoon' => $dueSoon,
             'unreadReminders' => $unreadReminders,
+            'unreadReminderCount' => $unreadReminderCount,
             'documentCount' => $documentCount,
         ]);
     }
