@@ -4,17 +4,19 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use 
-Illuminate\support\facades\DB;
- 
+use Illuminate\Support\Facades\DB;
 
-class matterSeeder extends Seeder
+class MatterSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
 {
+    if (DB::table('matters')->exists()) {
+        return;
+    }
+
     DB::table('matters')->insert([
         [
             'matter_reference' => 'HM-2026-001',

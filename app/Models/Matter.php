@@ -6,7 +6,7 @@ use App\Reminders\DeadlineStage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class matter extends Model
+class Matter extends Model
 {
     public function documents(): HasMany
     {
