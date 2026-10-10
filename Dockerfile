@@ -1,5 +1,5 @@
 # Stage 1: build the front-end assets
-FROM node:22-alpine AS assets
+FROM node:22-bookworm-slim AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
