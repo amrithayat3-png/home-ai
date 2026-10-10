@@ -22,6 +22,7 @@
         .hint { color: #667085; font-size: 12px; margin-top: 5px; }
         .btn { background: #2563eb; border: 0; border-radius: 6px; color: white; cursor: pointer; font: inherit; padding: 12px 20px; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">

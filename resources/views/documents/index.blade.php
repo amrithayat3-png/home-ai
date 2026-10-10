@@ -21,6 +21,7 @@
         .doc-link { color: #175cd3; font-weight: bold; text-decoration: none; }
         .doc-link:hover { text-decoration: underline; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">

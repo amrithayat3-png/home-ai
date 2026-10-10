@@ -961,6 +961,192 @@
             border-color: var(--border-hover);
             color: var(--text);
         }
+
+        /* =========================
+           UI POLISH V2
+           Larger type, depth, motion and button variants.
+           This whole block can be deleted to return to the previous look.
+        ========================= */
+
+        ::selection { background: rgba(92,169,255,.3); }
+
+        * { scrollbar-width: thin; scrollbar-color: rgba(92,169,255,.28) transparent; }
+
+        .brand h1 { font-size: 24px; }
+        .brand p { font-size: 12.5px; }
+        .nav-title { font-size: 11px; letter-spacing: 1.2px; }
+        .nav-item { font-size: 14.5px; padding: 11px 13px; border-radius: 10px; }
+        .nav-icon { font-size: 15px; }
+        .demo-label { font-size: 11px; }
+        .eyebrow { font-size: 12px; letter-spacing: 1.6px; }
+        .status { font-size: 12.5px; padding: 10px 15px; }
+        .ai-label { font-size: 12.5px; }
+        .ai-symbol { font-size: 19px; }
+        .ai-command h1 { font-size: clamp(30px, 3.2vw, 46px); line-height: 1.12; }
+        .ai-subtitle { font-size: 15px; line-height: 1.65; }
+        .ask-input { font-size: 16px; padding-top: 16px; padding-bottom: 16px; }
+        .ask-button { font-size: 14px; padding: 12px 20px; }
+        .suggestion { font-size: 12.5px; padding: 9px 14px; }
+        .section-heading h3 { font-size: 17px; }
+        .section-heading span { font-size: 12px; }
+        .panel-label { font-size: 11.5px; letter-spacing: 1.2px; }
+        .metric { font-size: 42px; text-shadow: 0 0 28px rgba(92,169,255,.22); }
+        .metric-description { font-size: 12.5px; }
+        .metric-trend { font-size: 11.5px; padding: 5px 9px; }
+        .ai-mini { font-size: 18px; }
+        .briefing-title { font-size: 21px; }
+        .briefing-text { font-size: 13.5px; line-height: 1.65; }
+        .briefing-link { font-size: 12.5px; }
+        .activity-main strong { font-size: 14px; }
+        .activity-main span { font-size: 12.5px; margin-top: 5px; }
+        .priority { font-size: 11.5px; padding: 6px 10px; border-radius: 999px; }
+        .insight { font-size: 13.5px; line-height: 1.65; }
+        .ai-answer { font-size: 14.5px; line-height: 1.7; }
+        .ai-refs { font-size: 12.5px; }
+        .user-box { font-size: 12.5px; }
+        .user-box strong { font-size: 13.5px; }
+        .dl-badge { font-size: 11.5px; padding: 6px 10px; border-radius: 999px; border: 1px solid transparent; font-weight: 600; }
+        .dl-overdue { border-color: rgba(255,107,122,.35); }
+        .dl-today { border-color: rgba(255,154,165,.3); }
+        .dl-soon { border-color: rgba(245,184,91,.32); }
+        .dl-week { border-color: rgba(92,169,255,.3); }
+
+        .bento { grid-template-rows: minmax(170px, auto) minmax(170px, auto); }
+        .insight strong { font-size: 13px; }
+
+        @media (min-width: 1001px) {
+            .sidebar { width: 272px; }
+            .main { margin-left: 272px; width: calc(100% - 272px); }
+        }
+
+        @media (min-width: 701px) {
+            .topbar h2 { font-size: 30px; }
+        }
+
+        /* Depth and motion */
+
+        .panel {
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.16);
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            left: 12%;
+            right: 12%;
+            top: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(92,169,255,.7), transparent);
+            opacity: 0;
+            transition: opacity .3s ease;
+        }
+
+        .panel:hover::before { opacity: 1; }
+
+        .panel:hover {
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 48px rgba(0,0,0,.28), 0 0 0 1px rgba(92,169,255,.12);
+        }
+
+        .activity-item { transition: background .2s ease, padding .2s ease; border-radius: 8px; }
+        .activity-item:hover { background: rgba(255,255,255,.03); padding-left: 8px; padding-right: 8px; }
+
+        .ask-container { transition: box-shadow .25s ease, border-color .25s ease; }
+        .ask-container:focus-within { box-shadow: 0 0 0 4px rgba(92,169,255,.14), 0 12px 40px rgba(54,143,232,.14); }
+
+        @keyframes hui-rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .topbar, .ai-command, .bento > .panel, .lower > .panel, .lower {
+            animation: hui-rise .6s cubic-bezier(.2,.7,.2,1) both;
+        }
+
+        .ai-command { animation-delay: .06s; }
+        .bento > .panel:nth-child(1) { animation-delay: .12s; }
+        .bento > .panel:nth-child(2) { animation-delay: .17s; }
+        .bento > .panel:nth-child(3) { animation-delay: .22s; }
+        .bento > .panel:nth-child(4) { animation-delay: .27s; }
+        .bento > .panel:nth-child(5) { animation-delay: .32s; }
+        .lower > .panel:nth-child(1) { animation-delay: .36s; }
+        .lower > .panel:nth-child(2) { animation-delay: .42s; }
+
+        .status { box-shadow: 0 0 22px rgba(53,212,154,.08); }
+
+        /* Button variants */
+
+        .ui-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 42px;
+            padding: 0 18px;
+            border-radius: 11px;
+            border: 1px solid transparent;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
+        }
+
+        .ui-btn:hover { transform: translateY(-2px); }
+        .ui-btn:active { transform: translateY(0) scale(.98); }
+
+        .ui-btn.primary {
+            color: #04121f;
+            background: linear-gradient(135deg, #7cc0ff, #4aa3f5 55%, #38d9d1);
+            box-shadow: 0 8px 24px rgba(74,163,245,.28), inset 0 1px 0 rgba(255,255,255,.35);
+        }
+
+        .ui-btn.primary:hover { box-shadow: 0 14px 34px rgba(74,163,245,.42), inset 0 1px 0 rgba(255,255,255,.4); }
+
+        .ui-btn.secondary {
+            color: var(--text);
+            background: rgba(255,255,255,.05);
+            border-color: rgba(255,255,255,.14);
+        }
+
+        .ui-btn.secondary:hover { background: rgba(92,169,255,.12); border-color: rgba(92,169,255,.4); }
+
+        .ui-btn.ghost { color: var(--muted); background: transparent; }
+        .ui-btn.ghost:hover { color: white; background: rgba(255,255,255,.06); }
+
+        .ui-btn.danger {
+            color: #ffd9dd;
+            background: rgba(255,107,122,.1);
+            border-color: rgba(255,107,122,.4);
+        }
+
+        .ui-btn.danger:hover { background: rgba(255,107,122,.2); box-shadow: 0 10px 26px rgba(255,107,122,.22); }
+
+        .ask-button {
+            box-shadow: 0 6px 20px rgba(54,143,232,.25), inset 0 1px 0 rgba(255,255,255,.25);
+        }
+
+        .ask-button:active { transform: translateY(0) scale(.97); }
+
+        .suggestion:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.2); }
+
+        .rem-btn { font-size: 12px; padding: 7px 12px; border-radius: 8px; }
+        .rem-btn:active { transform: scale(.96); }
+
+        .icon-button { width: 42px; height: 42px; font-size: 17px; }
+
+        a:focus-visible, button:focus-visible, input:focus-visible {
+            outline: 2px solid rgba(124,192,255,.9);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .001ms !important;
+                animation-delay: 0s !important;
+                transition-duration: .001ms !important;
+            }
+        }
     </style>
 </head>
 
@@ -1084,6 +1270,11 @@
 
 
             <div class="top-actions">
+
+                @if (auth()->user()->canManageWork())
+                    <a class="ui-btn secondary" href="{{ route('documents.create') }}">Upload &amp; Classify</a>
+                    <a class="ui-btn primary" href="{{ route('matters.create') }}">+ New Matter</a>
+                @endif
 
                 <button class="icon-button" id="themeButton" title="Theme">
                     ☼

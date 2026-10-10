@@ -20,6 +20,7 @@
         .field-label { display: block; font-weight: bold; margin-bottom: 6px; }
         select { border: 1px solid #d0d5dd; border-radius: 6px; box-sizing: border-box; font: inherit; margin-bottom: 8px; max-width: 100%; min-height: 40px; padding: 9px 11px; width: 100%; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">

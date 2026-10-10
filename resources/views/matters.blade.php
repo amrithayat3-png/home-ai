@@ -177,6 +177,7 @@
         .dl-soon    { background: rgba(245,184,91,.14); color: #f5b85b; }
         .dl-week    { background: rgba(92,169,255,.14); color: #5ca9ff; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">

@@ -136,19 +136,7 @@
             margin: 14px 0 6px;
         }
 
-        .actions button {
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,.18);
-            background: transparent;
-            color: inherit;
-            cursor: pointer;
-        }
 
-        .actions .danger {
-            border-color: rgba(255,107,122,.5);
-            color: #ff6b7a;
-        }
 
         .flash-error {
             border-color: rgba(255,107,122,.5);
@@ -161,6 +149,7 @@
             align-self: center;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">
@@ -187,14 +176,14 @@
                         <form method="POST" action="{{ route('matters.reopen', $matter) }}">
                             @csrf
                             @method('PATCH')
-                            <button type="submit">Reopen matter</button>
+                            <button type="submit" class="btn btn-outline">Reopen matter</button>
                         </form>
                     @else
                         <form method="POST" action="{{ route('matters.close', $matter) }}"
                               onsubmit="return confirm('Close this matter? It will leave the active lists and reminders.');">
                             @csrf
                             @method('PATCH')
-                            <button type="submit">Close matter</button>
+                            <button type="submit" class="btn btn-outline">Close matter</button>
                         </form>
                     @endif
                 @endif
@@ -205,7 +194,7 @@
                               onsubmit="return confirm('Delete {{ $matter->matter_reference }} permanently? Linked documents are kept and marked Needs matter. This cannot be undone.');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="danger">Delete matter</button>
+                            <button type="submit" class="btn btn-danger">Delete matter</button>
                         </form>
                     @else
                         <span class="hint">Close this matter before deleting it.</span>

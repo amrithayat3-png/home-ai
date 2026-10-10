@@ -31,6 +31,7 @@
             .details { grid-template-columns: 1fr; }
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">

@@ -22,6 +22,7 @@
         .edit-link { color: #175cd3; font-weight: bold; text-decoration: none; }
         .notes { color: #667085; font-size: 13px; line-height: 1.6; margin-top: 22px; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
     <div class="topbar">
