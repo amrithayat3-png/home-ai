@@ -81,7 +81,12 @@ class DashboardController extends Controller
 
     public function matters(Request $request)
     {
-        $query = Matter::whereIn('status', ['Open', 'Pending']);
+        // The Closed filter shows closed matters, so they can be reopened or deleted. Otherwise only active ones.
+        $closedView = $request->input('status') === 'Closed';
+
+        $query = $closedView
+            ? Matter::where('status', 'Closed')
+            : Matter::whereIn('status', ['Open', 'Pending']);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -109,7 +114,7 @@ class DashboardController extends Controller
             ->orderBy('deadline')
             ->get();
 
-        $sections = Matter::whereIn('status', ['Open', 'Pending'])
+        $sections = ($closedView ? Matter::where('status', 'Closed') : Matter::whereIn('status', ['Open', 'Pending']))
             ->orderBy('section')
             ->distinct()
             ->pluck('section');

@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,officer')->group(function () {
         Route::get('/matters/create', [MatterController::class, 'create'])->name('matters.create');
         Route::post('/matters', [MatterController::class, 'store'])->name('matters.store');
+        Route::patch('/matters/{matter}/close', [MatterController::class, 'close'])->whereNumber('matter')->name('matters.close');
+        Route::patch('/matters/{matter}/reopen', [MatterController::class, 'reopen'])->whereNumber('matter')->name('matters.reopen');
 
         Route::get('/documents/upload', [DocumentController::class, 'create'])->name('documents.create');
         Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
@@ -35,6 +37,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/documents/{document}/matter', [DocumentController::class, 'linkMatter'])->whereNumber('document')->name('documents.matter');
         Route::patch('/documents/{document}/category', [DocumentController::class, 'updateCategory'])->whereNumber('document')->name('documents.category');
     });
+
+    // Administrators only: delete matters.
+    Route::delete('/matters/{matter}', [MatterController::class, 'destroy'])->middleware('role:admin')->whereNumber('matter')->name('matters.destroy');
 
     // Administrators only: manage accounts.
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {

@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\Matter;
+use App\Models\Reminder;
 use App\Services\MatterExtractor;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
@@ -88,6 +90,64 @@ class MatterController extends Controller
         return redirect()
             ->route('matters.show', $matter)
             ->with('success', $message);
+    }
+
+    /**
+     * Close a matter: it leaves the active lists, the dashboard and the reminders, but nothing is deleted.
+     */
+    public function close(Matter $matter)
+    {
+        $matter->forceFill(['status' => 'Closed'])->save();
+
+        // Unread reminders for a closed matter are no longer useful.
+        Reminder::where('matter_id', $matter->id)->whereNull('read_at')->update(['read_at' => now()]);
+
+        return redirect()
+            ->route('matters.show', $matter)
+            ->with('success', "{$matter->matter_reference} is now closed.");
+    }
+
+    public function reopen(Matter $matter)
+    {
+        $matter->forceFill(['status' => 'Open'])->save();
+
+        return redirect()
+            ->route('matters.show', $matter)
+            ->with('success', "{$matter->matter_reference} is open again.");
+    }
+
+    /**
+     * Administrators only. Allowed when the matter is Closed or has no documents.
+     * Linked documents are kept and go back to "Needs matter".
+     */
+    public function destroy(Matter $matter)
+    {
+        if ($matter->status !== 'Closed' && $matter->documents()->exists()) {
+            return redirect()
+                ->route('matters.show', $matter)
+                ->with('error', 'Close this matter first. A matter with documents can only be deleted once it is closed.');
+        }
+
+        $reference = $matter->matter_reference;
+
+        DB::transaction(function () use ($matter) {
+            Document::where('matter_id', $matter->id)->update([
+                'matter_id' => null,
+                'matter_link_source' => null,
+            ]);
+
+            Document::where('suggested_matter_id', $matter->id)->update([
+                'suggested_matter_id' => null,
+            ]);
+
+            Reminder::where('matter_id', $matter->id)->delete();
+
+            $matter->delete();
+        });
+
+        return redirect()
+            ->route('matters')
+            ->with('success', "{$reference} was deleted. Its documents are kept and marked Needs matter.");
     }
 
     private function form(array $prefill, array $missing, ?Document $document, ?string $notice)

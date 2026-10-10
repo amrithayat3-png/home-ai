@@ -191,8 +191,12 @@
     </div>
 
     <div class="container">
-        <h2>Active Matters</h2>
-        <p class="summary">{{ $matters->count() }} Open and Pending matters currently match your filters.</p>
+        @if (session('success'))
+            <p class="summary">{{ session('success') }}</p>
+        @endif
+
+        <h2>{{ request('status') === 'Closed' ? 'Closed Matters' : 'Active Matters' }}</h2>
+        <p class="summary">{{ $matters->count() }} {{ request('status') === 'Closed' ? 'Closed' : 'Open and Pending' }} matters currently match your filters.</p>
 
         <form class="filters" method="GET" action="{{ route('matters') }}">
             <input
@@ -206,6 +210,7 @@
                 <option value="">All active statuses</option>
                 <option value="Open" @selected(request('status') === 'Open')>Open</option>
                 <option value="Pending" @selected(request('status') === 'Pending')>Pending</option>
+                <option value="Closed" @selected(request('status') === 'Closed')>Closed</option>
             </select>
 
             <select name="section">
@@ -266,7 +271,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6">No active matters found.</td>
+                            <td colspan="6">No matters found.</td>
                         </tr>
                     @endforelse
                 </tbody>

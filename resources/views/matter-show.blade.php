@@ -128,6 +128,38 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 14px 0 6px;
+        }
+
+        .actions button {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,.18);
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        .actions .danger {
+            border-color: rgba(255,107,122,.5);
+            color: #ff6b7a;
+        }
+
+        .flash-error {
+            border-color: rgba(255,107,122,.5);
+            color: #ff6b7a;
+        }
+
+        .hint {
+            opacity: .7;
+            font-size: 13px;
+            align-self: center;
+        }
     </style>
 </head>
 <body>
@@ -143,6 +175,44 @@
 
         <p class="reference">{{ $matter->matter_reference }}</p>
         <h2>{{ $matter->title }}</h2>
+
+        @if (session('error'))
+            <div class="flash flash-error">{{ session('error') }}</div>
+        @endif
+
+        @if (auth()->user()->canManageWork() || auth()->user()->isAdmin())
+            <div class="actions">
+                @if (auth()->user()->canManageWork())
+                    @if ($matter->status === 'Closed')
+                        <form method="POST" action="{{ route('matters.reopen', $matter) }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit">Reopen matter</button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('matters.close', $matter) }}"
+                              onsubmit="return confirm('Close this matter? It will leave the active lists and reminders.');">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit">Close matter</button>
+                        </form>
+                    @endif
+                @endif
+
+                @if (auth()->user()->isAdmin())
+                    @if ($matter->status === 'Closed' || $matter->documents->isEmpty())
+                        <form method="POST" action="{{ route('matters.destroy', $matter) }}"
+                              onsubmit="return confirm('Delete {{ $matter->matter_reference }} permanently? Linked documents are kept and marked Needs matter. This cannot be undone.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="danger">Delete matter</button>
+                        </form>
+                    @else
+                        <span class="hint">Close this matter before deleting it.</span>
+                    @endif
+                @endif
+            </div>
+        @endif
 
         <section class="card">
             <div class="details">
