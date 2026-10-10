@@ -178,8 +178,9 @@
         .dl-week    { background: rgba(92,169,255,.14); color: #5ca9ff; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
-<body>
+<body class="theme-dark">
     <div class="topbar">
         <h1>HOME AI — Matters & Files</h1>
         <div class="topbar-actions">

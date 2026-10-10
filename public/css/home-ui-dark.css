@@ -264,3 +264,186 @@ body.theme-dark .btn.btn-light:hover {
 body.theme-dark a {
     color: #8dc5ff;
 }
+
+/* =====================================================================
+   Matter pages: list, filters, table and details
+   ===================================================================== */
+
+body.theme-dark .container > h2 {
+    color: var(--d-text);
+}
+
+body.theme-dark .reference {
+    color: var(--d-blue) !important;
+    font-weight: 600;
+    letter-spacing: .04em;
+}
+
+/* Filters bar */
+body.theme-dark .filters {
+    background: var(--d-panel) !important;
+    border: 1px solid var(--d-border) !important;
+    backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 16px 40px rgba(0, 0, 0, .3) !important;
+}
+
+body.theme-dark .filters button {
+    background: linear-gradient(135deg, #3a95ee, #2476cc) !important;
+    box-shadow: 0 8px 24px rgba(54, 143, 232, .3), inset 0 1px 0 rgba(255, 255, 255, .25) !important;
+    color: #fff !important;
+}
+
+body.theme-dark .clear-filters {
+    color: var(--d-text-2) !important;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .14) !important;
+}
+
+body.theme-dark .clear-filters:hover {
+    background: rgba(92, 169, 255, .14) !important;
+    border-color: rgba(92, 169, 255, .5) !important;
+    color: #fff !important;
+}
+
+/* Table */
+body.theme-dark .table-card {
+    background: var(--d-panel) !important;
+    border: 1px solid var(--d-border) !important;
+    backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 24px 60px rgba(0, 0, 0, .35) !important;
+}
+
+body.theme-dark th {
+    background: linear-gradient(180deg, rgba(92, 169, 255, .14), rgba(92, 169, 255, .06)) !important;
+    color: #b9d6f6 !important;
+    border-bottom: 1px solid var(--d-border);
+}
+
+body.theme-dark td {
+    color: var(--d-text-2);
+    border-top: 1px solid rgba(255, 255, 255, .06) !important;
+    background: transparent;
+}
+
+body.theme-dark tbody tr:hover td {
+    background: rgba(92, 169, 255, .08);
+}
+
+body.theme-dark tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 var(--d-blue);
+}
+
+body.theme-dark .matter-link,
+body.theme-dark .doc-link,
+body.theme-dark .edit-link,
+body.theme-dark .doc-name {
+    color: #8dc5ff !important;
+}
+
+body.theme-dark .matter-link:hover,
+body.theme-dark .doc-link:hover,
+body.theme-dark .edit-link:hover,
+body.theme-dark .doc-name:hover {
+    color: #c3e0ff !important;
+}
+
+/* Priority and status words, tuned for a dark ground */
+body.theme-dark .priority-high { color: #ff8a95 !important; }
+body.theme-dark .priority-normal { color: #8dc5ff !important; }
+body.theme-dark .priority-low { color: var(--d-muted) !important; }
+body.theme-dark .status-open { color: #5be0b0 !important; }
+body.theme-dark .status-pending { color: #ffc977 !important; }
+body.theme-dark .status-closed { color: var(--d-muted) !important; }
+
+/* Deadline badges */
+body.theme-dark .dl-badge {
+    background: rgba(255, 255, 255, .06);
+    color: var(--d-text-2);
+}
+
+body.theme-dark .dl-overdue { background: rgba(255, 107, 122, .16); color: #ff8a95; }
+body.theme-dark .dl-today { background: rgba(255, 154, 165, .12); color: #ffa9b2; }
+body.theme-dark .dl-soon { background: rgba(245, 184, 91, .14); color: #ffc977; }
+body.theme-dark .dl-week { background: rgba(92, 169, 255, .14); color: #8dc5ff; }
+
+/* Matter details */
+body.theme-dark .label {
+    color: var(--d-muted) !important;
+}
+
+body.theme-dark .value {
+    color: var(--d-text);
+}
+
+body.theme-dark .section-title {
+    color: var(--d-text);
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+}
+
+body.theme-dark .content {
+    background: rgba(5, 9, 16, .55) !important;
+    border-left: 4px solid var(--d-blue) !important;
+    color: var(--d-text-2);
+    border-radius: 0 10px 10px 0;
+}
+
+body.theme-dark .doc-row {
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
+    transition: background .18s ease, padding .18s ease;
+    border-radius: 8px;
+}
+
+body.theme-dark .doc-row:hover {
+    background: rgba(92, 169, 255, .06);
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+body.theme-dark .doc-meta {
+    color: var(--d-muted);
+}
+
+body.theme-dark .flash {
+    background: rgba(53, 212, 154, .1) !important;
+    color: #9be8cb !important;
+    border: 1px solid rgba(53, 212, 154, .3);
+    border-left: 4px solid var(--d-green);
+}
+
+body.theme-dark .flash.flash-error {
+    background: rgba(255, 107, 122, .1) !important;
+    color: #ffb4bb !important;
+    border: 1px solid rgba(255, 107, 122, .35);
+    border-left: 4px solid var(--d-danger);
+}
+
+body.theme-dark .hint {
+    color: var(--d-muted) !important;
+}
+
+/* Outline and danger buttons on dark */
+body.theme-dark .btn.btn-outline {
+    background: transparent !important;
+    color: #8dc5ff !important;
+    border: 1.5px solid rgba(92, 169, 255, .6) !important;
+    box-shadow: none !important;
+}
+
+body.theme-dark .btn.btn-outline:hover {
+    background: rgba(92, 169, 255, .16) !important;
+    color: #fff !important;
+    border-color: var(--d-blue) !important;
+    box-shadow: 0 10px 26px rgba(54, 143, 232, .28) !important;
+}
+
+body.theme-dark .btn.btn-danger {
+    background: linear-gradient(135deg, #f0525f, #c93442) !important;
+    color: #fff !important;
+    border: 0 !important;
+    box-shadow: 0 8px 24px rgba(255, 107, 122, .28), inset 0 1px 0 rgba(255, 255, 255, .22) !important;
+}
+
+body.theme-dark .btn.btn-danger:hover {
+    box-shadow: 0 14px 34px rgba(255, 107, 122, .42), inset 0 1px 0 rgba(255, 255, 255, .25) !important;
+}
