@@ -66,6 +66,19 @@
                     @error('role') <div class="field-error">{{ $message }}</div> @enderror
                 </div>
 
+                <div class="field">
+                    <label>Sections this account can see</label>
+                    @php($chosen = old('sections', $user?->sections ?? []))
+                    @foreach ($sections as $sectionName)
+                        <div class="check">
+                            <input id="section-{{ $loop->index }}" name="sections[]" type="checkbox" value="{{ $sectionName }}" @checked(in_array($sectionName, (array) $chosen, true))>
+                            <label for="section-{{ $loop->index }}">{{ $sectionName }}</label>
+                        </div>
+                    @endforeach
+                    <div class="hint">Leave all unticked to allow every section. Administrators always see every section. A ticked list limits matters, documents, reminders and Ask HOME AI answers to those sections.</div>
+                    @error('sections') <div class="field-error">{{ $message }}</div> @enderror
+                </div>
+
                 @if ($user)
                     <div class="field check">
                         <input type="hidden" name="is_active" value="0">

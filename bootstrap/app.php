@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RequireAdminTwoFactor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Runs on every web request and signs out deactivated users.
         $middleware->appendToGroup('web', EnsureUserIsActive::class);
+
+        // Off by default. Switch on with REQUIRE_ADMIN_2FA=true once every administrator has enrolled.
+        $middleware->appendToGroup('web', RequireAdminTwoFactor::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

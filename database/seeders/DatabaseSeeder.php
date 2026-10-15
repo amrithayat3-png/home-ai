@@ -16,7 +16,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(MatterSeeder::class);
+        // Demo matters are for demonstrations only. Production keeps this off.
+        if (filter_var(env('SEED_DEMO_MATTERS', false), FILTER_VALIDATE_BOOL)) {
+            $this->call(MatterSeeder::class);
+        }
 
         $this->importUsers(env('SEED_USERS'));
 

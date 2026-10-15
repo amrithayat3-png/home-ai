@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\Matter;
 use App\Models\Reminder;
 use App\Services\MatterExtractor;
+use App\Support\Audit;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +54,7 @@ class MatterController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'section' => ['required', Rule::in(MatterExtractor::SECTIONS)],
+            'section' => ['required', Rule::in($this->allowedSections())],
             'category' => ['required', 'string', 'max:100'],
             'priority' => ['required', Rule::in(MatterExtractor::PRIORITIES)],
             'district' => ['nullable', 'string', 'max:100'],
@@ -71,6 +72,13 @@ class MatterController extends Controller
         unset($data['document_id']);
 
         $matter = $this->createMatter($data);
+
+        Audit::record('matter.created', $matter, [
+            'title' => $matter->title,
+            'section' => $matter->section,
+            'deadline' => (string) $data['deadline'],
+            'from_document' => $documentId,
+        ], $matter->matter_reference);
 
         $message = 'Matter '.$matter->matter_reference.' was created.';
 
@@ -99,6 +107,8 @@ class MatterController extends Controller
     {
         $matter->forceFill(['status' => 'Closed'])->save();
 
+        Audit::record('matter.closed', $matter, [], $matter->matter_reference);
+
         // Unread reminders for a closed matter are no longer useful.
         Reminder::where('matter_id', $matter->id)->whereNull('read_at')->update(['read_at' => now()]);
 
@@ -110,6 +120,8 @@ class MatterController extends Controller
     public function reopen(Matter $matter)
     {
         $matter->forceFill(['status' => 'Open'])->save();
+
+        Audit::record('matter.reopened', $matter, [], $matter->matter_reference);
 
         return redirect()
             ->route('matters.show', $matter)
@@ -129,6 +141,16 @@ class MatterController extends Controller
         }
 
         $reference = $matter->matter_reference;
+
+        // A copy of the record goes to the audit trail before it is removed.
+        Audit::record('matter.deleted', $matter, [
+            'snapshot' => $matter->only([
+                'matter_reference', 'title', 'section', 'category', 'priority', 'status', 'district',
+                'assigned_officer', 'related_department', 'received_date', 'deadline',
+                'summary', 'last_action', 'next_action',
+            ]),
+            'documents_kept' => $matter->documents()->count(),
+        ], $reference);
 
         DB::transaction(function () use ($matter) {
             Document::where('matter_id', $matter->id)->update([
@@ -157,10 +179,20 @@ class MatterController extends Controller
             'missing' => $missing,
             'document' => $document,
             'notice' => $notice,
-            'sections' => MatterExtractor::SECTIONS,
+            'sections' => $this->allowedSections(),
             'priorities' => MatterExtractor::PRIORITIES,
             'categories' => Matter::query()->orderBy('category')->distinct()->pluck('category'),
         ]);
+    }
+
+    /**
+     * The sections this account may create matters in: all of them, or only the ones it is limited to.
+     *
+     * @return array<int, string>
+     */
+    private function allowedSections(): array
+    {
+        return Matter::restrictedSections() ?? MatterExtractor::SECTIONS;
     }
 
     private function createMatter(array $data): Matter

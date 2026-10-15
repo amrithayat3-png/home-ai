@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\AskHomeAi;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 class AskController extends Controller
@@ -21,8 +21,11 @@ class AskController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
+            // Only our own configuration messages are shown. Anything else stays in the log.
+            $detail = $exception instanceof RuntimeException ? ' '.$exception->getMessage() : '';
+
             return response()->json([
-                'error' => 'HOME AI could not answer right now. '.Str::limit($exception->getMessage(), 200),
+                'error' => 'HOME AI could not answer right now.'.$detail.' Please try again in a moment.',
             ], 500);
         }
     }

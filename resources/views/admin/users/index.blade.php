@@ -29,6 +29,7 @@
         <h1>HOME AI: Users</h1>
         <div class="topbar-actions">
             <a href="{{ route('admin.users.create') }}">Add User</a>
+            <a href="{{ route('admin.audit.index') }}">Audit Log</a>
             <a href="{{ route('home') }}">Back to Dashboard</a>
         </div>
     </div>
@@ -45,6 +46,7 @@
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Sections</th>
                         <th>Status</th>
                         <th></th>
                     </tr>
@@ -55,6 +57,7 @@
                             <td>{{ $listedUser->name }}</td>
                             <td>{{ $listedUser->email }}</td>
                             <td><span class="role">{{ $listedUser->roleLabel() }}</span></td>
+                            <td>{{ $listedUser->isAdmin() || empty($listedUser->sections) ? 'All' : implode(', ', $listedUser->sections) }}</td>
                             <td class="{{ $listedUser->is_active ? 'active' : 'inactive' }}">
                                 {{ $listedUser->is_active ? 'Active' : 'Deactivated' }}
                             </td>

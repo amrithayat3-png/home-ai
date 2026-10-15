@@ -48,17 +48,29 @@ class MatterExtractor
      */
     public function fromDocument(Document $document): array
     {
-        $disk = Storage::disk('local');
+        $disk = Storage::disk(config('documents.disk'));
 
         if (! $disk->exists($document->stored_path)) {
             throw new RuntimeException('The stored file could not be found.');
         }
 
-        $reply = $this->classifier->askAboutFile(
-            $this->prompt(),
-            $disk->path($document->stored_path),
-            $document->mime_type
-        );
+        // The file may live in a bucket, so read it into a short-lived local copy for the scanner.
+        $extension = pathinfo($document->stored_path, PATHINFO_EXTENSION) ?: 'bin';
+        $workingCopy = sys_get_temp_dir().'/homeai-'.Str::uuid().'.'.$extension;
+
+        try {
+            file_put_contents($workingCopy, $disk->get($document->stored_path));
+
+            $reply = $this->classifier->askAboutFile(
+                $this->prompt(),
+                $workingCopy,
+                $document->mime_type
+            );
+        } finally {
+            if (is_file($workingCopy)) {
+                @unlink($workingCopy);
+            }
+        }
 
         return $this->normalise($this->decode($reply));
     }

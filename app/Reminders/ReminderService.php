@@ -17,7 +17,7 @@ class ReminderService
     {
         $today ??= DeadlineStage::today(config('reminders.timezone'));
 
-        $matters = Matter::whereIn('status', ['Open', 'Pending'])
+        $matters = Matter::withoutGlobalScopes()->whereIn('status', ['Open', 'Pending'])
             ->whereNotNull('deadline')
             ->get();
 
@@ -60,6 +60,11 @@ class ReminderService
         $full = "{$matter->matter_reference} {$when} (deadline {$deadline}): {$matter->title}";
 
         foreach ($internalUsers as $user) {
+            // Accounts limited to some sections only hear about matters in those sections.
+            if (! $user->canSeeSection($matter->section)) {
+                continue;
+            }
+
             yield [ReminderMessage::AUDIENCE_INTERNAL, new ReminderMessage(
                 audience: ReminderMessage::AUDIENCE_INTERNAL,
                 matterId: $matter->id,

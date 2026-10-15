@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\MatterExtractor;
+use App\Support\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,7 +22,7 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('admin.users.form', ['user' => null, 'roles' => User::ROLES]);
+        return view('admin.users.form', ['user' => null, 'roles' => User::ROLES, 'sections' => MatterExtractor::SECTIONS]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -29,6 +31,8 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
             'role' => ['required', Rule::in(array_keys(User::ROLES))],
+            'sections' => ['nullable', 'array'],
+            'sections.*' => ['string', Rule::in(MatterExtractor::SECTIONS)],
             'password' => ['required', 'confirmed', $this->passwordRule()],
         ]);
 
@@ -38,9 +42,15 @@ class UserController extends Controller
             'email' => Str::lower($data['email']),
             'password' => $data['password'],
             'role' => $data['role'],
+            'sections' => $this->sectionsFrom($data),
             'is_active' => true,
             'email_verified_at' => now(),
         ])->save();
+
+        Audit::record('user.created', $user, [
+            'role' => $user->role,
+            'sections' => $user->sections,
+        ], $user->email);
 
         return redirect()
             ->route('admin.users.index')
@@ -49,7 +59,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        return view('admin.users.form', ['user' => $user, 'roles' => User::ROLES]);
+        return view('admin.users.form', ['user' => $user, 'roles' => User::ROLES, 'sections' => MatterExtractor::SECTIONS]);
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -58,6 +68,8 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::in(array_keys(User::ROLES))],
+            'sections' => ['nullable', 'array'],
+            'sections.*' => ['string', Rule::in(MatterExtractor::SECTIONS)],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -78,12 +90,20 @@ class UserController extends Controller
                 ->withErrors(['role' => 'This is the only active administrator. Create another administrator first.']);
         }
 
+        $before = $user->only(['name', 'email', 'role', 'sections', 'is_active']);
+
         $user->forceFill([
             'name' => $data['name'],
             'email' => Str::lower($data['email']),
             'role' => $data['role'],
+            'sections' => $this->sectionsFrom($data),
             'is_active' => $isActive,
         ])->save();
+
+        Audit::record('user.updated', $user, [
+            'before' => $before,
+            'after' => $user->only(['name', 'email', 'role', 'sections', 'is_active']),
+        ], $user->email);
 
         return redirect()
             ->route('admin.users.index')
@@ -101,9 +121,24 @@ class UserController extends Controller
             'remember_token' => Str::random(60),
         ])->save();
 
+        Audit::record('user.password_reset', $user, [], $user->email);
+
         return redirect()
             ->route('admin.users.edit', $user)
             ->with('success', 'The password for '.$user->name.' was changed.');
+    }
+
+    /**
+     * A list of sections to limit the account to, or null for every section.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<int, string>|null
+     */
+    private function sectionsFrom(array $data): ?array
+    {
+        $sections = array_values(array_unique($data['sections'] ?? []));
+
+        return $sections === [] ? null : $sections;
     }
 
     private function passwordRule(): Password

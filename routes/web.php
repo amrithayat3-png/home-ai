@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AskController;
+use App\Http\Controllers\AuditController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\MatterController;
@@ -49,6 +50,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->whereNumber('user')->name('users.edit');
         Route::patch('/users/{user}', [UserController::class, 'update'])->whereNumber('user')->name('users.update');
         Route::patch('/users/{user}/password', [UserController::class, 'password'])->whereNumber('user')->name('users.password');
+
+        Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
     });
 
     // The starter kit's placeholder page. Signed-in users go to the HOME AI dashboard instead.

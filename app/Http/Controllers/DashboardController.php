@@ -58,12 +58,13 @@ class DashboardController extends Controller
 
         $unreadReminders = Reminder::with('matter')
             ->where('user_id', auth()->id())
+            ->whereHas('matter')
             ->whereNull('read_at')
             ->latest('id')
             ->limit(15)
             ->get();
 
-        $unreadReminderCount = Reminder::where('user_id', auth()->id())->whereNull('read_at')->count();
+        $unreadReminderCount = Reminder::where('user_id', auth()->id())->whereHas('matter')->whereNull('read_at')->count();
 
         $documentCount = Document::count();
 

@@ -71,7 +71,32 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'sections' => 'array',
         ];
+    }
+
+    /**
+     * The sections this account is limited to, or null when it may see every section.
+     * Administrators are never limited.
+     *
+     * @return array<int, string>|null
+     */
+    public function sectionLimit(): ?array
+    {
+        if ($this->isAdmin()) {
+            return null;
+        }
+
+        $sections = $this->sections;
+
+        return is_array($sections) && $sections !== [] ? array_values($sections) : null;
+    }
+
+    public function canSeeSection(?string $section): bool
+    {
+        $limit = $this->sectionLimit();
+
+        return $limit === null || in_array($section, $limit, true);
     }
 
     public function isAdmin(): bool
