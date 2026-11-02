@@ -54,6 +54,20 @@ COPY --from=test /app/.tests-passed /tmp/.tests-passed
 RUN composer dump-autoload --optimize \
     && php artisan package:discover --ansi
 
+# PostgreSQL 18 command line tools (pg_dump, pg_restore) for the database backup job.
+# They must be the same major version as the Railway database, so they come from the official PostgreSQL repository.
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && . /etc/os-release \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
+    && rm -rf /var/lib/apt/lists/*
+USER www-data
+
 # There is no local database file on purpose: if the PostgreSQL settings are missing the app must fail loudly.
 # Demo matters are no longer seeded unless SEED_DEMO_MATTERS=true. Accounts come from SEED_USERS.
 COPY --chown=www-data:www-data docker/seed.sh /etc/entrypoint.d/99-seed.sh
