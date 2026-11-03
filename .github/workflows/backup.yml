@@ -1,0 +1,54 @@
+name: backup
+
+# Nightly database copy, same db:backup command used on Railway. Because it touches the
+# database every night, it also stops a free Supabase project from pausing for inactivity.
+# Check that the job is still enabled now and then: GitHub switches schedules off after
+# 60 days without any activity in a public repository.
+
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: production
+      APP_KEY: ${{ secrets.APP_KEY }}
+      DB_CONNECTION: pgsql
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_DATABASE: ${{ secrets.DB_DATABASE }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_SSLMODE: require
+      BACKUP_AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+      BACKUP_AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+      BACKUP_AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_DEFAULT_REGION }}
+      BACKUP_AWS_BUCKET: ${{ secrets.BACKUP_AWS_BUCKET }}
+      BACKUP_AWS_ENDPOINT: ${{ secrets.BACKUP_AWS_ENDPOINT }}
+      BACKUP_AWS_USE_PATH_STYLE_ENDPOINT: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: PostgreSQL 18 tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, zip
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-dev --no-interaction --no-scripts --prefer-dist
+      - run: php artisan db:backup

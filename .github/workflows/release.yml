@@ -1,0 +1,39 @@
+name: release
+
+# Manual only. Run it after the first deploy and after any change that adds a migration.
+# It creates the tables (migrate) and adds the accounts from SEED_USERS (seed).
+# Vercel containers must not do this at start-up, because several can start at once.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: production
+      APP_KEY: ${{ secrets.APP_KEY }}
+      DB_CONNECTION: pgsql
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_DATABASE: ${{ secrets.DB_DATABASE }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_SSLMODE: require
+      SEED_USERS: ${{ secrets.SEED_USERS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, zip
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-dev --no-interaction --no-scripts --prefer-dist
+      - run: php artisan migrate --force
+      - run: php artisan db:seed --force
