@@ -1,0 +1,59 @@
+name: copy-data
+
+# One-off, manual. Copies the whole Railway database (accounts, matters, documents list,
+# audit log) into the new Supabase database. The Railway side is only read.
+# The Supabase side is REPLACED, so run it once, on a new empty project.
+# Needs one extra secret: SOURCE_DATABASE_URL (the public database URL from Railway).
+# Only row counts are printed, never data. Delete the SOURCE_DATABASE_URL secret afterwards.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PostgreSQL 18 tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+
+      - name: Read a copy from Railway
+        env:
+          SOURCE_DATABASE_URL: ${{ secrets.SOURCE_DATABASE_URL }}
+        run: |
+          pg_dump --format=custom --no-owner --no-privileges --file=home-ai.dump "$SOURCE_DATABASE_URL"
+          pg_restore --list home-ai.dump > /dev/null
+          ls -l home-ai.dump
+
+      - name: Load it into Supabase
+        env:
+          PGHOST: ${{ secrets.DB_HOST }}
+          PGPORT: ${{ secrets.DB_PORT }}
+          PGDATABASE: ${{ secrets.DB_DATABASE }}
+          PGUSER: ${{ secrets.DB_USERNAME }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGSSLMODE: require
+        run: |
+          pg_restore --no-owner --no-privileges --clean --if-exists --single-transaction --dbname="$PGDATABASE" home-ai.dump
+
+      - name: Row counts (numbers only)
+        env:
+          PGHOST: ${{ secrets.DB_HOST }}
+          PGPORT: ${{ secrets.DB_PORT }}
+          PGDATABASE: ${{ secrets.DB_DATABASE }}
+          PGUSER: ${{ secrets.DB_USERNAME }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGSSLMODE: require
+        run: |
+          for t in users matters documents reminders audit_logs migrations; do
+            printf '%s: ' "$t"
+            psql -tA -c "select count(*) from $t"
+          done
