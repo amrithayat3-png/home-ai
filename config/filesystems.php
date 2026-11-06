@@ -56,7 +56,8 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            // Set AWS_THROW=true to see the real storage error while fixing a setup problem.
+            'throw' => (bool) env('AWS_THROW', false),
             'report' => false,
         ],
 
