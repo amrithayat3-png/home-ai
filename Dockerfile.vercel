@@ -21,7 +21,8 @@ RUN npm run build
 # Stage 3: PHP 8.4 with FrankenPHP (web server inside the same container)
 FROM dunglas/frankenphp:1-php8.4-bookworm
 RUN install-php-extensions pdo_pgsql pgsql intl zip bcmath opcache \
-    && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+    && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && printf 'upload_max_filesize=10M\npost_max_size=12M\nmemory_limit=256M\nmax_execution_time=120\n' > "$PHP_INI_DIR/conf.d/zz-homeai.ini"
 
 WORKDIR /app
 COPY . .
