@@ -49,9 +49,11 @@ return [
 
         's3' => [
             'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
+            // Vercel keeps the AWS_* names for its own use inside running functions, so the app
+            // reads STORAGE_* first. The AWS_* names still work on other hosts.
+            'key' => env('STORAGE_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('STORAGE_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('STORAGE_REGION', env('AWS_DEFAULT_REGION')),
             'bucket' => env('AWS_BUCKET'),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
