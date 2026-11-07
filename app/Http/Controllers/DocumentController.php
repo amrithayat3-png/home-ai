@@ -158,7 +158,7 @@ class DocumentController extends Controller
 
             $disk->makeDirectory('documents/'.$newCategory);
 
-            if (! $disk->move($document->stored_path, $newPath)) {
+            if (! $this->moveStored($disk, $document->stored_path, $newPath)) {
                 return back()->withErrors(['category' => 'The file could not be moved to the new category folder.']);
             }
 
@@ -276,16 +276,11 @@ class DocumentController extends Controller
 
             $destination = 'documents/'.$analysis['category'].'/'.Str::uuid().'.'.$prepared['extension'];
 
-            if ($directKey !== null) {
-                // The file is already in the bucket: file it under its category.
-                $saved = $disk->move($directKey, $destination);
-            } else {
-                $stream = fopen($workingCopy, 'rb');
-                $saved = $disk->put($destination, $stream);
+            $stream = fopen($workingCopy, 'rb');
+            $saved = $disk->put($destination, $stream);
 
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
+            if (is_resource($stream)) {
+                fclose($stream);
             }
 
             if (! $saved) {
@@ -293,6 +288,9 @@ class DocumentController extends Controller
 
                 throw new RuntimeException('The file could not be saved to storage.');
             }
+
+            // A large file came in through the holding folder: the filed copy is saved, so remove the holding copy.
+            $this->discard($disk, $directKey);
 
             $linkSource = null;
 
@@ -603,6 +601,34 @@ class DocumentController extends Controller
         $guessed = strtolower((string) $file->guessExtension());
 
         return in_array($guessed, self::ALLOWED_EXTENSIONS, true) ? $guessed : 'bin';
+    }
+
+    /**
+     * Moves a stored file by saving the new copy and then removing the old one.
+     * The bucket's own "copy" command is not used because Supabase Storage does not support
+     * the permission lookup that Laravel's move() performs first.
+     */
+    private function moveStored(FilesystemAdapter $disk, string $from, string $to): bool
+    {
+        $stream = $disk->readStream($from);
+
+        if (! is_resource($stream)) {
+            return false;
+        }
+
+        try {
+            $saved = $disk->writeStream($to, $stream);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        if (! $saved) {
+            return false;
+        }
+
+        return $disk->delete($from);
     }
 
     /**

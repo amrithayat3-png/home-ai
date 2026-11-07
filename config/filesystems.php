@@ -59,6 +59,8 @@ return [
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             // Browser upload links must not carry the extra checksum fields newer SDKs add by default.
+            // Supabase Storage has no object permissions, so do not look them up when copying.
+            'retain_visibility' => false,
             'request_checksum_calculation' => 'when_required',
             'response_checksum_validation' => 'when_required',
             // Set AWS_THROW=true to see the real storage error while fixing a setup problem.

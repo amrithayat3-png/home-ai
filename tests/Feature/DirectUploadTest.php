@@ -214,4 +214,28 @@ class DirectUploadTest extends TestCase
         Storage::disk('local')->assertMissing(self::KEY);
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
+
+    public function test_changing_a_documents_category_moves_the_stored_file(): void
+    {
+        Storage::fake('local');
+        $this->fakeScanner();
+        $this->actingAs($this->officer());
+
+        Storage::disk('local')->put(self::KEY, $this->pdfBytes('move'));
+        $this->withSession(['direct_uploads' => [self::KEY]])
+            ->post(route('documents.store'), ['uploaded_key' => self::KEY, 'uploaded_name' => 'move.pdf']);
+
+        $document = Document::firstOrFail();
+        $oldPath = $document->stored_path;
+
+        $this->patch(route('documents.category', $document), ['category' => 'bills'])
+            ->assertRedirect(route('documents.show', $document));
+
+        $document->refresh();
+
+        $this->assertStringStartsWith('documents/bills/', $document->stored_path);
+        Storage::disk('local')->assertExists($document->stored_path);
+        Storage::disk('local')->assertMissing($oldPath);
+        $this->assertSame('Filed', $document->review_status);
+    }
 }
