@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -45,6 +46,7 @@ class DocumentClassifier
     private function classifyFile(string $prompt, string $filePath, string $mimeType): string
     {
         $response = Http::timeout(90)
+            ->retry(3, 2500, fn ($exception) => $this->isBusy($exception), throw: false)
             ->withHeaders(['x-goog-api-key' => (string) config('services.gemini.key')])
             ->acceptJson()
             ->post($this->endpoint(), [
@@ -73,6 +75,7 @@ class DocumentClassifier
     private function classifyText(string $prompt, string $text): string
     {
         $response = Http::timeout(90)
+            ->retry(3, 2500, fn ($exception) => $this->isBusy($exception), throw: false)
             ->withHeaders(['x-goog-api-key' => (string) config('services.gemini.key')])
             ->acceptJson()
             ->post($this->endpoint(), [
@@ -90,6 +93,15 @@ class DocumentClassifier
         $response->throw();
 
         return (string) data_get($response->json(), 'candidates.0.content.parts.0.text');
+    }
+
+    /**
+     * Google answers 503 ("high demand") or 429 (too many requests) for a moment at a time. Those are worth a retry.
+     */
+    private function isBusy(mixed $exception): bool
+    {
+        return $exception instanceof RequestException
+            && in_array($exception->response->status(), [429, 503], true);
     }
 
     private function endpoint(): string
