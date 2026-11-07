@@ -35,10 +35,10 @@
             <p class="steps">HOME AI will read the file, suggest its category, and move it into the relevant protected folder. Files with low-confidence results are marked for review.</p>
 
             @if ($errors->any())
-                <div class="error">{{ $errors->first('document') }}</div>
+                <div class="error">{{ $errors->first('document') ?: $errors->first() }}</div>
             @endif
 
-            <form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
+            <form id="upload-form" method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="upload-box">
                     <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx" required>
@@ -56,10 +56,110 @@
                 <p class="note">Leave on automatic and HOME AI will link the document if it finds a matter reference, or suggest a match for you to confirm.</p>
 
                 <button type="submit">Scan and File Document</button>
+                <p class="note" id="upload-status" role="status" hidden></p>
             </form>
 
             <p class="note">Use synthetic or non-sensitive files while using the free Gemini tier.</p>
         </section>
     </main>
+    <script>
+        // Files over 4 MB cannot pass through the site itself (the host refuses requests that big),
+        // so the browser sends them straight to storage and the form then only names the stored file.
+        (function () {
+            var form = document.getElementById('upload-form');
+            var input = form.querySelector('input[type=file]');
+            var button = form.querySelector('button[type=submit]');
+            var status = document.getElementById('upload-status');
+            var LIMIT = 4 * 1024 * 1024;
+            var busy = false;
+
+            function say(text, isError) {
+                status.hidden = false;
+                status.textContent = text;
+                status.style.color = isError ? '#b42318' : '';
+            }
+
+            function failed(error) {
+                busy = false;
+                button.disabled = false;
+                say(error.message || 'The upload failed. Please try again.', true);
+            }
+
+            function send(plan, file) {
+                return new Promise(function (resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('PUT', plan.url);
+                    Object.keys(plan.headers || {}).forEach(function (name) {
+                        xhr.setRequestHeader(name, plan.headers[name]);
+                    });
+                    xhr.upload.onprogress = function (event) {
+                        if (event.lengthComputable) {
+                            say('Uploading the file: ' + Math.round(event.loaded / event.total * 100) + '%');
+                        }
+                    };
+                    xhr.onload = function () {
+                        if (xhr.status >= 200 && xhr.status < 300) { resolve(); } else {
+                            reject(new Error('Storage refused the file (error ' + xhr.status + '). Please try again.'));
+                        }
+                    };
+                    xhr.onerror = function () {
+                        reject(new Error('The file could not be sent to storage. Check the connection and try again.'));
+                    };
+                    xhr.send(file);
+                });
+            }
+
+            function hidden(name, value) {
+                var field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = name;
+                field.value = value;
+                form.appendChild(field);
+            }
+
+            form.addEventListener('submit', function (event) {
+                var file = input.files && input.files[0];
+
+                if (!file || file.size <= LIMIT) { return; }
+
+                event.preventDefault();
+                if (busy) { return; }
+                busy = true;
+                button.disabled = true;
+                say('Preparing the upload...');
+
+                fetch(@json(route('documents.direct-url')), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': @json(csrf_token())
+                    },
+                    body: JSON.stringify({ filename: file.name, size: file.size })
+                }).then(function (response) {
+                    return response.json().then(function (body) { return { ok: response.ok, body: body }; });
+                }).then(function (result) {
+                    if (!result.ok) {
+                        var first = result.body.errors ? Object.values(result.body.errors)[0][0] : null;
+                        throw new Error(result.body.message && !result.body.errors ? result.body.message : (first || 'The upload could not be prepared.'));
+                    }
+
+                    if (!result.body.direct) {
+                        form.submit();
+                        return null;
+                    }
+
+                    return send(result.body, file).then(function () {
+                        hidden('uploaded_key', result.body.key);
+                        hidden('uploaded_name', file.name);
+                        input.disabled = true;
+                        say('Scanning and filing the document. This can take a minute...');
+                        form.submit();
+                    });
+                }).catch(failed);
+            });
+        })();
+    </script>
 </body>
 </html>

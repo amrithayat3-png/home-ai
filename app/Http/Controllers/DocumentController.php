@@ -9,12 +9,14 @@ use App\Services\MatterMatcher;
 use App\Support\Audit;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
+use ZipArchive;
 
 class DocumentController extends Controller
 {
@@ -29,6 +31,20 @@ class DocumentController extends Controller
     ];
 
     private const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'docx'];
+
+    private const MAX_BYTES = 10 * 1024 * 1024;
+
+    private const MIME_BY_EXTENSION = [
+        'pdf' => 'application/pdf',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+
+    /** The shape of a storage key issued by directUploadUrl(): nothing else is accepted back. */
+    private const DIRECT_KEY_PATTERN = '#^incoming/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png|webp|docx)$#';
 
     /**
      * The disk that holds uploaded documents: the server disk in development, the bucket in production.
@@ -172,7 +188,203 @@ class DocumentController extends Controller
         return view('documents.create', compact('matters'));
     }
 
+    /**
+     * Step 1 of a large upload: hands the browser a short-lived link so it can send the file
+     * straight to storage. Vercel refuses request bodies over about 4.5 MB, so large files
+     * cannot travel through the app itself.
+     */
+    public function directUploadUrl(Request $request)
+    {
+        $data = $request->validate([
+            'filename' => ['required', 'string', 'max:255'],
+            'size' => ['required', 'integer', 'min:1', 'max:'.self::MAX_BYTES],
+        ], [
+            'size.max' => 'The file is larger than 10 MB.',
+        ]);
+
+        $extension = strtolower(pathinfo($data['filename'], PATHINFO_EXTENSION));
+
+        if (! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
+            return response()->json(['message' => 'Only PDF, JPG, JPEG, PNG, WEBP and DOCX files can be uploaded.'], 422);
+        }
+
+        // A server disk (development) has no browser upload links. The page then uses the normal form.
+        if (config('filesystems.disks.'.config('documents.disk').'.driver') !== 's3') {
+            return response()->json(['direct' => false]);
+        }
+
+        $key = 'incoming/'.Str::uuid().'.'.$extension;
+
+        try {
+            $signed = $this->disk()->temporaryUploadUrl($key, now()->addMinutes(15), [
+                'ContentType' => self::MIME_BY_EXTENSION[$extension],
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json(['message' => 'HOME AI could not prepare the upload link. Please try again.'], 500);
+        }
+
+        // Only links issued to this session can be turned into a document later.
+        $pending = array_slice((array) $request->session()->get('direct_uploads', []), -20);
+        $pending[] = $key;
+        $request->session()->put('direct_uploads', $pending);
+
+        $headers = [];
+
+        foreach ($signed['headers'] as $name => $value) {
+            if (in_array(strtolower($name), ['host', 'content-length'], true)) {
+                continue;
+            }
+
+            $headers[$name] = is_array($value) ? implode(',', $value) : (string) $value;
+        }
+
+        return response()->json([
+            'direct' => true,
+            'url' => $signed['url'],
+            'headers' => $headers,
+            'key' => $key,
+        ]);
+    }
+
     public function store(Request $request, DocumentClassifier $classifier, MatterMatcher $matcher)
+    {
+        $disk = $this->disk();
+
+        $prepared = $request->filled('uploaded_key')
+            ? $this->prepareDirectUpload($request, $disk)
+            : $this->prepareFormUpload($request);
+
+        if ($prepared instanceof RedirectResponse) {
+            return $prepared;
+        }
+
+        $workingCopy = $prepared['working_copy'];
+        $directKey = $prepared['direct_key'];
+        $destination = null;
+        $analysis = null;
+        $matter = null;
+        $suggestedMatterId = null;
+
+        try {
+            if ($prepared['copy_from'] !== null && ! copy($prepared['copy_from'], $workingCopy)) {
+                throw new RuntimeException('The uploaded file could not be read.');
+            }
+
+            $analysis = $classifier->classify($workingCopy, $prepared['mime']);
+
+            $destination = 'documents/'.$analysis['category'].'/'.Str::uuid().'.'.$prepared['extension'];
+
+            if ($directKey !== null) {
+                // The file is already in the bucket: file it under its category.
+                $saved = $disk->move($directKey, $destination);
+            } else {
+                $stream = fopen($workingCopy, 'rb');
+                $saved = $disk->put($destination, $stream);
+
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+
+            if (! $saved) {
+                $destination = null;
+
+                throw new RuntimeException('The file could not be saved to storage.');
+            }
+
+            $linkSource = null;
+
+            if ($request->filled('matter_id')) {
+                $matter = Matter::find($request->input('matter_id'));
+                $linkSource = $matter ? 'manual' : null;
+            }
+
+            if (! $matter) {
+                $matter = $matcher->findByReference(
+                    $analysis['matter_reference'] ?? null,
+                    $analysis['extracted_text'] ?? null,
+                    $prepared['name']
+                );
+                $linkSource = $matter ? 'reference' : null;
+            }
+
+            if (! $matter) {
+                $suggestedMatterId = $matcher->suggestByTitle(
+                    ($analysis['subject'] ?? '').' '.($analysis['extracted_text'] ?? '')
+                )?->id;
+            }
+
+            $autoFile = config('documents.auto_file') && $analysis['confidence'] >= config('documents.auto_file_threshold');
+
+            $document = Document::create([
+                'original_name' => $prepared['name'],
+                'stored_path' => $destination,
+                'mime_type' => $prepared['mime'],
+                'file_size' => $prepared['size'],
+                'file_hash' => $prepared['hash'],
+                'uploaded_by' => auth()->id(),
+                'category' => $analysis['category'],
+                'confidence' => $analysis['confidence'],
+                'classification_reason' => $analysis['reason'],
+                'extracted_text' => $analysis['extracted_text'],
+                'review_status' => $autoFile ? 'Filed' : 'Needs review',
+                'classified_at' => now(),
+                'matter_id' => $matter?->id,
+                'suggested_matter_id' => $suggestedMatterId,
+                'matter_link_source' => $linkSource,
+            ]);
+        } catch (UniqueConstraintViolationException $exception) {
+            $this->discard($disk, $destination);
+            $this->discard($disk, $directKey);
+
+            return back()
+                ->withInput()
+                ->withErrors(['document' => 'This exact file has already been uploaded. It was not uploaded again.']);
+        } catch (Throwable $exception) {
+            $this->discard($disk, $destination);
+            $this->discard($disk, $directKey);
+
+            return back()
+                ->withInput()
+                ->withErrors(['document' => 'HOME AI could not classify this file. '.$exception->getMessage()]);
+        } finally {
+            if (is_file($workingCopy)) {
+                @unlink($workingCopy);
+            }
+        }
+
+        Audit::record('document.uploaded', $document, [
+            'category' => $analysis['category'],
+            'confidence' => $analysis['confidence'],
+            'review_status' => $document->review_status,
+            'matter' => $matter?->matter_reference,
+        ], $document->original_name);
+
+        $message = $document->review_status === 'Filed'
+            ? 'The document was scanned and filed in '.str($analysis['category'])->headline().'.'
+            : 'The document was scanned and sorted into '.str($analysis['category'])->headline().'. An officer must confirm it on the document page before it counts as filed.';
+
+        if ($matter) {
+            $message .= ' It is linked to '.$matter->matter_reference.'.';
+        } elseif ($suggestedMatterId) {
+            $message .= ' A matching matter was suggested. Please confirm it on the document page.';
+        } else {
+            $message .= ' No matching matter was found. You can link it manually.';
+        }
+
+        return redirect()
+            ->route('documents.index')
+            ->with('success', $message);
+    }
+
+    /**
+     * A file that came through the form (small files). Checks it and describes it for store().
+     *
+     * @return array<string, mixed>|RedirectResponse
+     */
+    private function prepareFormUpload(Request $request): array|RedirectResponse
     {
         $file = $request->allFiles()['document'] ?? null;
 
@@ -206,133 +418,175 @@ class DocumentController extends Controller
 
         // The same file is never filed twice. This also saves a scan.
         $hash = hash_file('sha256', $file->getRealPath());
-        $existing = Document::withoutGlobalScopes()->where('file_hash', $hash)->first();
 
-        if ($existing) {
-            Audit::record('document.duplicate_blocked', $existing, [
-                'uploaded_name' => $file->getClientOriginalName(),
-            ], $file->getClientOriginalName());
-
-            // Only describe the existing document to an account that is allowed to see it.
-            $visible = Document::whereKey($existing->id)->first();
-            $detail = $visible ? ' It is already filed as document '.$visible->id.' ('.$visible->original_name.').' : '';
-
-            return back()
-                ->withInput()
-                ->withErrors(['document' => 'This exact file has already been uploaded.'.$detail.' It was not uploaded again.']);
+        if ($duplicate = $this->duplicateRedirect($hash, $file->getClientOriginalName())) {
+            return $duplicate;
         }
 
-        $disk = $this->disk();
         $extension = $this->safeExtension($file);
+
+        return [
+            'name' => $file->getClientOriginalName(),
+            'mime' => (string) $file->getMimeType(),
+            'size' => $file->getSize(),
+            'hash' => $hash,
+            'extension' => $extension,
+            'working_copy' => sys_get_temp_dir().'/homeai-'.Str::uuid().'.'.$extension,
+            'copy_from' => $file->getRealPath(),
+            'direct_key' => null,
+        ];
+    }
+
+    /**
+     * A large file the browser already sent to storage (step 2). The file never passed through
+     * the validation above, so everything is checked again here from the stored bytes.
+     *
+     * @return array<string, mixed>|RedirectResponse
+     */
+    private function prepareDirectUpload(Request $request, FilesystemAdapter $disk): array|RedirectResponse
+    {
+        $data = $request->validate([
+            'uploaded_key' => ['required', 'string', 'regex:'.self::DIRECT_KEY_PATTERN],
+            'uploaded_name' => ['required', 'string', 'max:255'],
+            'matter_id' => ['nullable', 'integer', 'exists:matters,id'],
+        ]);
+
+        $key = $data['uploaded_key'];
+        $pending = (array) $request->session()->get('direct_uploads', []);
+
+        // Only a link this session was given can be used, and only once.
+        if (! in_array($key, $pending, true)) {
+            return back()->withErrors(['document' => 'This upload is no longer valid. Please select the file again.']);
+        }
+
+        $request->session()->put('direct_uploads', array_values(array_diff($pending, [$key])));
+
+        $fail = function (string $message) use ($disk, $key): RedirectResponse {
+            $this->discard($disk, $key);
+
+            return back()->withInput()->withErrors(['document' => $message]);
+        };
+
+        if ($request->filled('matter_id') && ! Matter::whereKey($request->input('matter_id'))->exists()) {
+            return $fail('That matter does not exist or is not available to your account.');
+        }
+
+        $extension = strtolower(pathinfo($key, PATHINFO_EXTENSION));
         $workingCopy = sys_get_temp_dir().'/homeai-'.Str::uuid().'.'.$extension;
-        $destination = null;
-        $analysis = null;
-        $matter = null;
-        $suggestedMatterId = null;
 
         try {
-            if (! copy($file->getRealPath(), $workingCopy)) {
-                throw new RuntimeException('The uploaded file could not be read.');
+            if (! $disk->exists($key)) {
+                return $fail('The file did not reach storage. Please select it again and retry.');
             }
 
-            $analysis = $classifier->classify($workingCopy, (string) $file->getMimeType());
+            $size = (int) $disk->size($key);
 
-            $destination = 'documents/'.$analysis['category'].'/'.Str::uuid().'.'.$extension;
-
-            $stream = fopen($workingCopy, 'rb');
-            $saved = $disk->put($destination, $stream);
-
-            if (is_resource($stream)) {
-                fclose($stream);
+            if ($size < 1 || $size > self::MAX_BYTES) {
+                return $fail('The file is empty or larger than 10 MB.');
             }
 
-            if (! $saved) {
-                $destination = null;
+            $in = $disk->readStream($key);
+            $out = fopen($workingCopy, 'wb');
 
-                throw new RuntimeException('The file could not be saved to storage.');
+            if (! is_resource($in) || ! is_resource($out) || stream_copy_to_stream($in, $out) === false) {
+                throw new RuntimeException('The stored file could not be read.');
             }
 
-            $linkSource = null;
-
-            if ($request->filled('matter_id')) {
-                $matter = Matter::find($request->input('matter_id'));
-                $linkSource = $matter ? 'manual' : null;
-            }
-
-            if (! $matter) {
-                $matter = $matcher->findByReference(
-                    $analysis['matter_reference'] ?? null,
-                    $analysis['extracted_text'] ?? null,
-                    $file->getClientOriginalName()
-                );
-                $linkSource = $matter ? 'reference' : null;
-            }
-
-            if (! $matter) {
-                $suggestedMatterId = $matcher->suggestByTitle(
-                    ($analysis['subject'] ?? '').' '.($analysis['extracted_text'] ?? '')
-                )?->id;
-            }
-
-            $autoFile = config('documents.auto_file') && $analysis['confidence'] >= config('documents.auto_file_threshold');
-
-            $document = Document::create([
-                'original_name' => $file->getClientOriginalName(),
-                'stored_path' => $destination,
-                'mime_type' => (string) $file->getMimeType(),
-                'file_size' => $file->getSize(),
-                'file_hash' => $hash,
-                'uploaded_by' => auth()->id(),
-                'category' => $analysis['category'],
-                'confidence' => $analysis['confidence'],
-                'classification_reason' => $analysis['reason'],
-                'extracted_text' => $analysis['extracted_text'],
-                'review_status' => $autoFile ? 'Filed' : 'Needs review',
-                'classified_at' => now(),
-                'matter_id' => $matter?->id,
-                'suggested_matter_id' => $suggestedMatterId,
-                'matter_link_source' => $linkSource,
-            ]);
-        } catch (UniqueConstraintViolationException $exception) {
-            $this->discard($disk, $destination);
-
-            return back()
-                ->withInput()
-                ->withErrors(['document' => 'This exact file has already been uploaded. It was not uploaded again.']);
+            fclose($in);
+            fclose($out);
         } catch (Throwable $exception) {
-            $this->discard($disk, $destination);
+            report($exception);
+            @unlink($workingCopy);
 
-            return back()
-                ->withInput()
-                ->withErrors(['document' => 'HOME AI could not classify this file. '.$exception->getMessage()]);
-        } finally {
-            if (is_file($workingCopy)) {
-                @unlink($workingCopy);
+            return $fail('The uploaded file could not be read from storage. '.$exception->getMessage());
+        }
+
+        $mime = $this->verifiedMime($workingCopy, $extension);
+
+        if ($mime === null) {
+            @unlink($workingCopy);
+
+            return $fail('The file content does not match its type. Only real PDF, JPG, PNG, WEBP and DOCX files are accepted.');
+        }
+
+        $hash = hash_file('sha256', $workingCopy);
+        $name = Str::limit(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '', basename(str_replace('\\', '/', $data['uploaded_name']))), 200, '');
+        $name = $name !== '' ? $name : 'document.'.$extension;
+
+        if ($duplicate = $this->duplicateRedirect($hash, $name)) {
+            @unlink($workingCopy);
+            $this->discard($disk, $key);
+
+            return $duplicate;
+        }
+
+        return [
+            'name' => $name,
+            'mime' => $mime,
+            'size' => $size,
+            'hash' => $hash,
+            'extension' => $extension,
+            'working_copy' => $workingCopy,
+            'copy_from' => null,
+            'direct_key' => $key,
+        ];
+    }
+
+    /**
+     * The same file is never filed twice. Returns the error response when this one is a repeat.
+     */
+    private function duplicateRedirect(string $hash, string $uploadedName): ?RedirectResponse
+    {
+        $existing = Document::withoutGlobalScopes()->where('file_hash', $hash)->first();
+
+        if (! $existing) {
+            return null;
+        }
+
+        Audit::record('document.duplicate_blocked', $existing, [
+            'uploaded_name' => $uploadedName,
+        ], $uploadedName);
+
+        // Only describe the existing document to an account that is allowed to see it.
+        $visible = Document::whereKey($existing->id)->first();
+        $detail = $visible ? ' It is already filed as document '.$visible->id.' ('.$visible->original_name.').' : '';
+
+        return back()
+            ->withInput()
+            ->withErrors(['document' => 'This exact file has already been uploaded.'.$detail.' It was not uploaded again.']);
+    }
+
+    /**
+     * The real type of a stored file, read from its bytes and not from its name. Null when it is not an accepted type.
+     */
+    private function verifiedMime(string $path, string $extension): ?string
+    {
+        $detected = (new \finfo(FILEINFO_MIME_TYPE))->file($path) ?: '';
+
+        $accepted = match ($extension) {
+            'pdf' => ['application/pdf'],
+            'jpg', 'jpeg' => ['image/jpeg'],
+            'png' => ['image/png'],
+            'webp' => ['image/webp'],
+            'docx' => [self::MIME_BY_EXTENSION['docx'], 'application/zip', 'application/octet-stream'],
+            default => [],
+        };
+
+        if (! in_array($detected, $accepted, true)) {
+            return null;
+        }
+
+        if ($extension === 'docx') {
+            $zip = new ZipArchive;
+
+            if ($zip->open($path) !== true || $zip->locateName('word/document.xml') === false) {
+                return null;
             }
+
+            $zip->close();
         }
 
-        Audit::record('document.uploaded', $document, [
-            'category' => $analysis['category'],
-            'confidence' => $analysis['confidence'],
-            'review_status' => $document->review_status,
-            'matter' => $matter?->matter_reference,
-        ], $document->original_name);
-
-        $message = $document->review_status === 'Filed'
-            ? 'The document was scanned and filed in '.str($analysis['category'])->headline().'.'
-            : 'The document was scanned and sorted into '.str($analysis['category'])->headline().'. An officer must confirm it on the document page before it counts as filed.';
-
-        if ($matter) {
-            $message .= ' It is linked to '.$matter->matter_reference.'.';
-        } elseif ($suggestedMatterId) {
-            $message .= ' A matching matter was suggested. Please confirm it on the document page.';
-        } else {
-            $message .= ' No matching matter was found. You can link it manually.';
-        }
-
-        return redirect()
-            ->route('documents.index')
-            ->with('success', $message);
+        return self::MIME_BY_EXTENSION[$extension];
     }
 
     /**

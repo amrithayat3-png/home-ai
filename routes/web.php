@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/documents/upload', [DocumentController::class, 'create'])->name('documents.create');
         Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
+        Route::post('/documents/upload-url', [DocumentController::class, 'directUploadUrl'])->middleware('throttle:30,1')->name('documents.direct-url');
         Route::get('/documents/{document}/matter/create', [MatterController::class, 'createFromDocument'])->whereNumber('document')->name('documents.matter.create');
         Route::patch('/documents/{document}/matter', [DocumentController::class, 'linkMatter'])->whereNumber('document')->name('documents.matter');
         Route::patch('/documents/{document}/category', [DocumentController::class, 'updateCategory'])->whereNumber('document')->name('documents.category');
