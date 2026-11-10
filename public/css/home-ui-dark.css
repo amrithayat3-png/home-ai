@@ -559,3 +559,7 @@ body.theme-dark button[disabled] {
 }
 body.theme-dark button.secondary.small { font-size: 13px; padding: 6px 12px; border-radius: 8px; }
 body.theme-dark .qn-search input { background: rgba(255, 255, 255, .06); }
+
+/* Search box in the top strip must never be wider than the screen */
+body.theme-dark .qn-search { box-sizing: border-box; min-width: 0; }
+body.theme-dark .qn-search input { box-sizing: border-box; flex: 1 1 0; min-width: 0; width: 0; }
