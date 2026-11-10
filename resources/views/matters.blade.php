@@ -181,6 +181,7 @@
     <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
 <body class="theme-dark">
+    @include('partials.quicknav')
     <div class="topbar">
         <h1>HOME AI — Matters & Files</h1>
         <div class="topbar-actions">

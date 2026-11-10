@@ -7,13 +7,14 @@ use App\Models\Matter;
 use App\Services\DocumentClassifier;
 use App\Services\MatterMatcher;
 use App\Support\Audit;
+use App\Support\UploadRejected;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Filesystem\FilesystemAdapter;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 use ZipArchive;
@@ -54,11 +55,26 @@ class DocumentController extends Controller
         return Storage::disk(config('documents.disk'));
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $documents = Document::with(['matter', 'suggestedMatter'])->latest()->get();
+        $threshold = (float) config('documents.bulk_confirm_threshold');
+        $onlyReview = $request->query('status') === 'review';
 
-        return view('documents.index', compact('documents'));
+        $documents = Document::with(['matter', 'suggestedMatter'])
+            ->when($onlyReview, fn ($query) => $query->where('review_status', 'Needs review'))
+            ->latest()
+            ->get();
+
+        $waiting = Document::where('review_status', 'Needs review')->count();
+        $sure = Document::where('review_status', 'Needs review')->where('confidence', '>=', $threshold)->count();
+
+        return view('documents.index', [
+            'documents' => $documents,
+            'waiting' => $waiting,
+            'sure' => $sure,
+            'thresholdPercent' => (int) round($threshold * 100),
+            'onlyReview' => $onlyReview,
+        ]);
     }
 
     public function show(Document $document)
@@ -179,13 +195,16 @@ class DocumentController extends Controller
             ->with('success', 'The document is filed under '.str($newCategory)->headline().'.');
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $matters = Matter::whereIn('status', ['Open', 'Pending'])
             ->orderBy('matter_reference')
             ->get(['id', 'matter_reference', 'title']);
 
-        return view('documents.create', compact('matters'));
+        // Arriving from a matter page: that matter is already chosen.
+        $selectedMatterId = $matters->contains('id', $request->integer('matter')) ? $request->integer('matter') : null;
+
+        return view('documents.create', compact('matters', 'selectedMatterId'));
     }
 
     /**
@@ -250,15 +269,114 @@ class DocumentController extends Controller
 
     public function store(Request $request, DocumentClassifier $classifier, MatterMatcher $matcher)
     {
+        try {
+            $result = $this->ingest($request, $classifier, $matcher);
+        } catch (UploadRejected $rejected) {
+            return back()->withInput()->withErrors([$rejected->field => $rejected->getMessage()]);
+        }
+
+        return redirect()
+            ->route('documents.index')
+            ->with('success', $result['message']);
+    }
+
+    /**
+     * One file per request, answered as JSON, so the upload page can send many files in a row
+     * and show the result of each one on its own line.
+     */
+    public function storeItem(Request $request, DocumentClassifier $classifier, MatterMatcher $matcher)
+    {
+        try {
+            $result = $this->ingest($request, $classifier, $matcher);
+        } catch (UploadRejected $rejected) {
+            return response()->json(['ok' => false, 'message' => $rejected->getMessage()], 422);
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'ok' => false,
+                'message' => collect($exception->errors())->flatten()->first() ?? 'The file was not accepted.',
+            ], 422);
+        }
+
+        $document = $result['document'];
+
+        return response()->json([
+            'ok' => true,
+            'id' => $document->id,
+            'name' => $document->original_name,
+            'category' => str($document->category)->headline()->toString(),
+            'confidence' => (float) $document->confidence,
+            'review_status' => $document->review_status,
+            'matter' => $result['matter']?->matter_reference,
+            'suggested_matter' => $result['suggested']?->matter_reference,
+            'url' => route('documents.show', $document),
+            'message' => $result['message'],
+        ]);
+    }
+
+    /**
+     * Confirms, in one go, every document still waiting for review that the scanner is very sure about.
+     * An officer presses the button, so each of these is still a person's confirmation, recorded in the audit trail.
+     * "ids" limits it to the documents of one upload batch. Without it, every eligible document is confirmed.
+     */
+    public function confirmBulk(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['nullable', 'array', 'max:500'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $threshold = (float) config('documents.bulk_confirm_threshold');
+
+        $query = Document::where('review_status', 'Needs review')
+            ->where('confidence', '>=', $threshold);
+
+        if (! empty($data['ids'])) {
+            $query->whereIn('id', $data['ids']);
+        }
+
+        $confirmed = 0;
+
+        foreach ($query->get() as $document) {
+            $document->review_status = 'Filed';
+            $document->save();
+
+            Audit::record('document.confirmed', $document, [
+                'category_before' => $document->category,
+                'category_after' => $document->category,
+                'bulk' => true,
+                'confidence' => (float) $document->confidence,
+            ], $document->original_name);
+
+            $confirmed++;
+        }
+
+        $remaining = Document::where('review_status', 'Needs review')->count();
+
+        $message = $confirmed === 0
+            ? 'No documents met the confirm-all rule. Open each document to confirm it.'
+            : $confirmed.' '.Str::plural('document', $confirmed).' confirmed and filed.'
+                .($remaining > 0 ? ' '.$remaining.' still '.($remaining === 1 ? 'needs' : 'need').' an officer to look at them.' : '');
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'confirmed' => $confirmed, 'remaining' => $remaining, 'message' => $message]);
+        }
+
+        return redirect()->route('documents.index')->with('success', $message);
+    }
+
+    /**
+     * Checks one file (from the form, or already sent to storage), scans it, files it and records it.
+     * Throws UploadRejected, with a readable message, when the file is not accepted.
+     *
+     * @return array{document: Document, matter: ?Matter, suggested: ?Matter, message: string}
+     */
+    private function ingest(Request $request, DocumentClassifier $classifier, MatterMatcher $matcher): array
+    {
         $disk = $this->disk();
 
         $prepared = $request->filled('uploaded_key')
             ? $this->prepareDirectUpload($request, $disk)
             : $this->prepareFormUpload($request);
-
-        if ($prepared instanceof RedirectResponse) {
-            return $prepared;
-        }
 
         $workingCopy = $prepared['working_copy'];
         $directKey = $prepared['direct_key'];
@@ -337,16 +455,12 @@ class DocumentController extends Controller
             $this->discard($disk, $destination);
             $this->discard($disk, $directKey);
 
-            return back()
-                ->withInput()
-                ->withErrors(['document' => 'This exact file has already been uploaded. It was not uploaded again.']);
+            throw new UploadRejected('This exact file has already been uploaded. It was not uploaded again.');
         } catch (Throwable $exception) {
             $this->discard($disk, $destination);
             $this->discard($disk, $directKey);
 
-            return back()
-                ->withInput()
-                ->withErrors(['document' => 'HOME AI could not classify this file. '.$exception->getMessage()]);
+            throw new UploadRejected('HOME AI could not classify this file. '.$exception->getMessage());
         } finally {
             if (is_file($workingCopy)) {
                 @unlink($workingCopy);
@@ -364,34 +478,35 @@ class DocumentController extends Controller
             ? 'The document was scanned and filed in '.str($analysis['category'])->headline().'.'
             : 'The document was scanned and sorted into '.str($analysis['category'])->headline().'. An officer must confirm it on the document page before it counts as filed.';
 
+        $suggested = null;
+
         if ($matter) {
             $message .= ' It is linked to '.$matter->matter_reference.'.';
         } elseif ($suggestedMatterId) {
+            $suggested = Matter::find($suggestedMatterId);
             $message .= ' A matching matter was suggested. Please confirm it on the document page.';
         } else {
             $message .= ' No matching matter was found. You can link it manually.';
         }
 
-        return redirect()
-            ->route('documents.index')
-            ->with('success', $message);
+        return ['document' => $document, 'matter' => $matter, 'suggested' => $suggested, 'message' => $message];
     }
 
     /**
-     * A file that came through the form (small files). Checks it and describes it for store().
+     * A file that came through the form (small files). Checks it and describes it for ingest().
      *
-     * @return array<string, mixed>|RedirectResponse
+     * @return array<string, mixed>
      */
-    private function prepareFormUpload(Request $request): array|RedirectResponse
+    private function prepareFormUpload(Request $request): array
     {
         $file = $request->allFiles()['document'] ?? null;
 
         if (! $file) {
-            return back()->withErrors(['document' => 'No file reached HOME AI. Please select the file again and retry.']);
+            throw new UploadRejected('No file reached HOME AI. Please select the file again and retry.');
         }
 
         if (! $file->isValid()) {
-            $message = match ($file->getError()) {
+            throw new UploadRejected(match ($file->getError()) {
                 UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file is larger than the PHP upload limit.',
                 UPLOAD_ERR_PARTIAL => 'The file upload was interrupted before it finished. Please try again.',
                 UPLOAD_ERR_NO_FILE => 'No file was selected.',
@@ -399,9 +514,7 @@ class DocumentController extends Controller
                 UPLOAD_ERR_CANT_WRITE => 'The server could not write the file to its temporary upload folder.',
                 UPLOAD_ERR_EXTENSION => 'A PHP extension stopped this file upload.',
                 default => 'The file upload failed with error code '.$file->getError().'.',
-            };
-
-            return back()->withErrors(['document' => $message]);
+            });
         }
 
         $request->validate([
@@ -411,15 +524,13 @@ class DocumentController extends Controller
 
         // A matter chosen at upload must be one this account is allowed to see.
         if ($request->filled('matter_id') && ! Matter::whereKey($request->input('matter_id'))->exists()) {
-            return back()->withInput()->withErrors(['matter_id' => 'That matter does not exist or is not available to your account.']);
+            throw new UploadRejected('That matter does not exist or is not available to your account.', 'matter_id');
         }
 
         // The same file is never filed twice. This also saves a scan.
         $hash = hash_file('sha256', $file->getRealPath());
 
-        if ($duplicate = $this->duplicateRedirect($hash, $file->getClientOriginalName())) {
-            return $duplicate;
-        }
+        $this->assertNotDuplicate($hash, $file->getClientOriginalName());
 
         $extension = $this->safeExtension($file);
 
@@ -439,9 +550,9 @@ class DocumentController extends Controller
      * A large file the browser already sent to storage (step 2). The file never passed through
      * the validation above, so everything is checked again here from the stored bytes.
      *
-     * @return array<string, mixed>|RedirectResponse
+     * @return array<string, mixed>
      */
-    private function prepareDirectUpload(Request $request, FilesystemAdapter $disk): array|RedirectResponse
+    private function prepareDirectUpload(Request $request, FilesystemAdapter $disk): array
     {
         $data = $request->validate([
             'uploaded_key' => ['required', 'string', 'regex:'.self::DIRECT_KEY_PATTERN],
@@ -454,19 +565,21 @@ class DocumentController extends Controller
 
         // Only a link this session was given can be used, and only once.
         if (! in_array($key, $pending, true)) {
-            return back()->withErrors(['document' => 'This upload is no longer valid. Please select the file again.']);
+            throw new UploadRejected('This upload is no longer valid. Please select the file again.');
         }
 
         $request->session()->put('direct_uploads', array_values(array_diff($pending, [$key])));
 
-        $fail = function (string $message) use ($disk, $key): RedirectResponse {
+        $fail = function (string $message) use ($disk, $key): never {
             $this->discard($disk, $key);
 
-            return back()->withInput()->withErrors(['document' => $message]);
+            throw new UploadRejected($message);
         };
 
         if ($request->filled('matter_id') && ! Matter::whereKey($request->input('matter_id'))->exists()) {
-            return $fail('That matter does not exist or is not available to your account.');
+            $this->discard($disk, $key);
+
+            throw new UploadRejected('That matter does not exist or is not available to your account.', 'matter_id');
         }
 
         $extension = strtolower(pathinfo($key, PATHINFO_EXTENSION));
@@ -474,13 +587,13 @@ class DocumentController extends Controller
 
         try {
             if (! $disk->exists($key)) {
-                return $fail('The file did not reach storage. Please select it again and retry.');
+                $fail('The file did not reach storage. Please select it again and retry.');
             }
 
             $size = (int) $disk->size($key);
 
             if ($size < 1 || $size > self::MAX_BYTES) {
-                return $fail('The file is empty or larger than 10 MB.');
+                $fail('The file is empty or larger than 10 MB.');
             }
 
             $in = $disk->readStream($key);
@@ -492,11 +605,15 @@ class DocumentController extends Controller
 
             fclose($in);
             fclose($out);
+        } catch (UploadRejected $rejected) {
+            @unlink($workingCopy);
+
+            throw $rejected;
         } catch (Throwable $exception) {
             report($exception);
             @unlink($workingCopy);
 
-            return $fail('The uploaded file could not be read from storage. '.$exception->getMessage());
+            $fail('The uploaded file could not be read from storage. '.$exception->getMessage());
         }
 
         $mime = $this->verifiedMime($workingCopy, $extension);
@@ -504,18 +621,20 @@ class DocumentController extends Controller
         if ($mime === null) {
             @unlink($workingCopy);
 
-            return $fail('The file content does not match its type. Only real PDF, JPG, PNG, WEBP and DOCX files are accepted.');
+            $fail('The file content does not match its type. Only real PDF, JPG, PNG, WEBP and DOCX files are accepted.');
         }
 
         $hash = hash_file('sha256', $workingCopy);
         $name = Str::limit(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '', basename(str_replace('\\', '/', $data['uploaded_name']))), 200, '');
         $name = $name !== '' ? $name : 'document.'.$extension;
 
-        if ($duplicate = $this->duplicateRedirect($hash, $name)) {
+        try {
+            $this->assertNotDuplicate($hash, $name);
+        } catch (UploadRejected $rejected) {
             @unlink($workingCopy);
             $this->discard($disk, $key);
 
-            return $duplicate;
+            throw $rejected;
         }
 
         return [
@@ -531,14 +650,14 @@ class DocumentController extends Controller
     }
 
     /**
-     * The same file is never filed twice. Returns the error response when this one is a repeat.
+     * The same file is never filed twice. Throws when this one is a repeat.
      */
-    private function duplicateRedirect(string $hash, string $uploadedName): ?RedirectResponse
+    private function assertNotDuplicate(string $hash, string $uploadedName): void
     {
         $existing = Document::withoutGlobalScopes()->where('file_hash', $hash)->first();
 
         if (! $existing) {
-            return null;
+            return;
         }
 
         Audit::record('document.duplicate_blocked', $existing, [
@@ -549,9 +668,7 @@ class DocumentController extends Controller
         $visible = Document::whereKey($existing->id)->first();
         $detail = $visible ? ' It is already filed as document '.$visible->id.' ('.$visible->original_name.').' : '';
 
-        return back()
-            ->withInput()
-            ->withErrors(['document' => 'This exact file has already been uploaded.'.$detail.' It was not uploaded again.']);
+        throw new UploadRejected('This exact file has already been uploaded.'.$detail.' It was not uploaded again.');
     }
 
     /**

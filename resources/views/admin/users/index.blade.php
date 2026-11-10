@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
+    @include('partials.quicknav')
     <div class="topbar">
         <h1>HOME AI: Users</h1>
         <div class="topbar-actions">

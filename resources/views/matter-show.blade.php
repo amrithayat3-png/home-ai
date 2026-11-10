@@ -153,6 +153,7 @@
     <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
 <body class="theme-dark">
+    @include('partials.quicknav')
     <div class="topbar">
         <h1>HOME AI — Matter Details</h1>
         <a href="{{ route('matters') }}">Back to Matters</a>
@@ -250,6 +251,11 @@
             <div class="content">{{ $matter->next_action }}</div>
 
             <h3 class="section-title">Linked Documents ({{ $matter->documents->count() }})</h3>
+            @if (auth()->user()->canManageWork())
+                <p>
+                    <a class="btn btn-outline" href="{{ route('documents.create', ['matter' => $matter->id]) }}">Add documents to this matter</a>
+                </p>
+            @endif
             @forelse ($matter->documents as $document)
                 <div class="doc-row">
                     <a class="doc-name" href="{{ route('documents.show', $document) }}">{{ $document->original_name }}</a>

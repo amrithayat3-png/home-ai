@@ -20,11 +20,18 @@
         .empty { color: #667085; padding: 28px; text-align: center; }
         .doc-link { color: #175cd3; font-weight: bold; text-decoration: none; }
         .doc-link:hover { text-decoration: underline; }
+        .bulk-card { align-items: center; background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(16,42,67,.08); display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; margin-bottom: 20px; padding: 18px 20px; }
+        .bulk-card p { margin: 4px 0 0; color: #667085; font-size: 13px; }
+        .bulk-card button { background: #027a48; border: 0; border-radius: 8px; color: white; cursor: pointer; font: inherit; font-weight: bold; padding: 12px 18px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+        .tabs a { background: white; border-radius: 999px; color: #344054; font-size: 14px; padding: 8px 16px; text-decoration: none; box-shadow: 0 1px 4px rgba(16,42,67,.08); }
+        .tabs a.active { background: #175cd3; color: white; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
     <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
 </head>
 <body class="theme-dark">
+    @include('partials.quicknav')
     <div class="topbar">
         <h1>HOME AI — Filed Documents</h1>
         @if (auth()->user()->canManageWork())
@@ -37,9 +44,36 @@
             <div class="success">{{ session('success') }}</div>
         @endif
 
+        @if (auth()->user()->canManageWork() && $waiting > 0)
+            <div class="bulk-card">
+                <div>
+                    <strong>{{ $waiting }} {{ \Illuminate\Support\Str::plural('document', $waiting) }} waiting for an officer to confirm.</strong>
+                    <p>
+                        @if ($sure > 0)
+                            The scanner is very sure ({{ $thresholdPercent }}% or more) about {{ $sure }} of them. Confirming files them under the category the scanner chose. You can still change any document later.
+                        @else
+                            None reaches {{ $thresholdPercent }}% confidence, so each one needs an officer to open it.
+                        @endif
+                    </p>
+                </div>
+                @if ($sure > 0)
+                    <form method="POST" action="{{ route('documents.confirm-bulk') }}"
+                          onsubmit="return confirm('Confirm and file {{ $sure }} {{ \Illuminate\Support\Str::plural('document', $sure) }}? You can still change any of them later.')">
+                        @csrf
+                        <button type="submit">Confirm {{ $sure }} the scanner is sure about</button>
+                    </form>
+                @endif
+            </div>
+        @endif
+
+        <div class="tabs">
+            <a href="{{ route('documents.index') }}" @class(['active' => ! $onlyReview])>All documents</a>
+            <a href="{{ route('documents.index', ['status' => 'review']) }}" @class(['active' => $onlyReview])>Needs review ({{ $waiting }})</a>
+        </div>
+
         <div class="table-card">
             @if ($documents->isEmpty())
-                <div class="empty">No documents have been uploaded yet.</div>
+                <div class="empty">{{ $onlyReview ? 'Nothing is waiting for review.' : 'No documents have been uploaded yet.' }}</div>
             @else
                 <table>
                     <thead>

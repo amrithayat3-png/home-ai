@@ -281,6 +281,7 @@
         .top-actions {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 10px;
         }
 
@@ -1111,6 +1112,16 @@
 
         .ui-btn.secondary:hover { background: rgba(92,169,255,.12); border-color: rgba(92,169,255,.4); }
 
+        .top-search { display: flex; gap: 8px; }
+        .top-search input {
+            width: 240px; max-width: 100%; padding: 9px 13px;
+            border: 1px solid var(--border); border-radius: 10px;
+            background: rgba(255,255,255,.05); color: var(--text); font: inherit; font-size: 13px;
+        }
+        .top-search input::placeholder { color: #59677a; }
+        .top-search input:focus { outline: 0; border-color: var(--border-hover); }
+        @media (max-width: 760px) { .top-search { width: 100%; } .top-search input { flex: 1; width: auto; font-size: 16px; } }
+
         .ui-btn.ghost { color: var(--muted); background: transparent; }
         .ui-btn.ghost:hover { color: white; background: rgba(255,255,255,.06); }
 
@@ -1364,6 +1375,11 @@
 
 
             <div class="top-actions">
+
+                <form class="top-search" method="GET" action="{{ route('search') }}" role="search">
+                    <input type="search" name="q" placeholder="Search letters, matters, references..." aria-label="Search" maxlength="100" required>
+                    <button type="submit" class="ui-btn secondary">Search</button>
+                </form>
 
                 @if (auth()->user()->canManageWork())
                     <a class="ui-btn secondary" href="{{ route('documents.create') }}">Upload &amp; Classify</a>

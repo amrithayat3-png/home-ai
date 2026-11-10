@@ -30,4 +30,17 @@ return [
 
     'auto_file_threshold' => (float) env('DOCUMENT_AUTO_FILE_THRESHOLD', 0.95),
 
+    /*
+    |--------------------------------------------------------------------------
+    | "Confirm all" on the documents list
+    |--------------------------------------------------------------------------
+    |
+    | The button confirms only documents still waiting for review whose scan
+    | confidence is at or above this value (0.90 means 90%). Each one is still
+    | an officer's confirmation and is written to the audit trail.
+    |
+    */
+
+    'bulk_confirm_threshold' => (float) env('DOCUMENT_BULK_CONFIRM_THRESHOLD', 0.90),
+
 ];

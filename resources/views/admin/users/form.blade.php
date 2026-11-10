@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
 </head>
 <body>
+    @include('partials.quicknav')
     <div class="topbar">
         <h1>HOME AI: {{ $user ? 'Edit User' : 'Add User' }}</h1>
         <a href="{{ route('admin.users.index') }}">Back to Users</a>

@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\MatterController;
 use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,8 @@ Route::middleware('auth')->group(function () {
     // Every signed-in role: view and ask.
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::post('/ask', [AskController::class, 'ask'])->middleware('throttle:20,1')->name('ask');
+
+    Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:60,1')->name('search');
 
     Route::get('/matters', [DashboardController::class, 'matters'])->name('matters');
     Route::get('/matters/{matter}', [DashboardController::class, 'showMatter'])->whereNumber('matter')->name('matters.show');
@@ -35,6 +38,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/documents/upload', [DocumentController::class, 'create'])->name('documents.create');
         Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::post('/documents/upload-url', [DocumentController::class, 'directUploadUrl'])->middleware('throttle:30,1')->name('documents.direct-url');
+        Route::post('/documents/upload-item', [DocumentController::class, 'storeItem'])->middleware('throttle:120,1')->name('documents.upload-item');
+        Route::post('/documents/confirm-bulk', [DocumentController::class, 'confirmBulk'])->middleware('throttle:20,1')->name('documents.confirm-bulk');
         Route::get('/documents/{document}/matter/create', [MatterController::class, 'createFromDocument'])->whereNumber('document')->name('documents.matter.create');
         Route::patch('/documents/{document}/matter', [DocumentController::class, 'linkMatter'])->whereNumber('document')->name('documents.matter');
         Route::patch('/documents/{document}/category', [DocumentController::class, 'updateCategory'])->whereNumber('document')->name('documents.category');
