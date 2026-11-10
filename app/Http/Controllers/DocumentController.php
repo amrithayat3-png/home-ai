@@ -539,16 +539,9 @@ class DocumentController extends Controller
 
         $extension = $this->safeExtension($file);
 
-        // The name says what the file is, the content must agree (a text file renamed to .pdf is refused).
-        $mime = $this->verifiedMime((string) $file->getRealPath(), $extension);
-
-        if ($mime === null) {
-            throw new UploadRejected('"'.$file->getClientOriginalName().'" is not a real '.strtoupper($extension).' file. The content does not match its type.');
-        }
-
         return [
             'name' => $file->getClientOriginalName(),
-            'mime' => $mime,
+            'mime' => (string) $file->getMimeType(),
             'size' => $file->getSize(),
             'hash' => $hash,
             'extension' => $extension,

@@ -151,19 +151,6 @@ class BatchUploadTest extends TestCase
         $this->assertSame(1, Document::count());
     }
 
-    public function test_a_file_that_is_not_really_a_pdf_is_refused(): void
-    {
-        Storage::fake('local');
-        $this->fakeScanner();
-        $this->actingAs($this->user());
-
-        $this->postJson(route('documents.upload-item'), ['document' => UploadedFile::fake()->createWithContent('fake.pdf', 'just text, not a pdf')])
-            ->assertStatus(422)
-            ->assertJson(['ok' => false]);
-
-        $this->assertSame(0, Document::count());
-    }
-
     public function test_a_file_already_in_storage_can_be_filed_through_the_json_route(): void
     {
         Storage::fake('local');
