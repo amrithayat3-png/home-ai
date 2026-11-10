@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title>{{ __('Welcome') }} - {{ config('app.name', 'Laravel') }}</title>
+    <link rel="icon" href="{{ asset('images/centre-seal-64.png') }}" type="image/png">
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $user ? 'Edit User' : 'Add User' }} | HOME AI</title>
+    <link rel="icon" href="{{ asset('images/centre-seal-64.png') }}" type="image/png">
     <style>
         body { margin: 0; background: #f3f6fb; color: #1d2939; font-family: Arial, sans-serif; }
         .topbar { align-items: center; background: #102a43; color: white; display: flex; justify-content: space-between; padding: 22px 45px; }

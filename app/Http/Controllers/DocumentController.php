@@ -154,6 +154,42 @@ class DocumentController extends Controller
         );
     }
 
+    /**
+     * Removes a wrong or duplicate upload: the stored file first, then the record.
+     * A copy of the record's details stays in the audit trail. If the file cannot be removed, nothing is deleted.
+     */
+    public function destroy(Document $document)
+    {
+        $disk = $this->disk();
+        $name = $document->original_name;
+
+        try {
+            if ($disk->exists($document->stored_path)) {
+                $disk->delete($document->stored_path);
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->withErrors(['document' => 'HOME AI could not remove the stored file, so nothing was deleted. Please try again.']);
+        }
+
+        Audit::record('document.deleted', $document, [
+            'snapshot' => $document->only([
+                'original_name', 'stored_path', 'mime_type', 'file_size', 'category', 'confidence',
+                'review_status', 'matter_id', 'file_hash', 'uploaded_by',
+            ]),
+        ], $name);
+
+        $matterId = $document->matter_id;
+        $document->delete();
+
+        $message = '"'.$name.'" was deleted.';
+
+        return $matterId && Matter::whereKey($matterId)->exists()
+            ? redirect()->route('matters.show', $matterId)->with('success', $message)
+            : redirect()->route('documents.index')->with('success', $message);
+    }
+
     public function updateCategory(Request $request, Document $document)
     {
         $data = $request->validate([

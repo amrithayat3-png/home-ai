@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/documents/{document}/matter/create', [MatterController::class, 'createFromDocument'])->whereNumber('document')->name('documents.matter.create');
         Route::patch('/documents/{document}/matter', [DocumentController::class, 'linkMatter'])->whereNumber('document')->name('documents.matter');
         Route::patch('/documents/{document}/category', [DocumentController::class, 'updateCategory'])->whereNumber('document')->name('documents.category');
+        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->whereNumber('document')->name('documents.destroy');
     });
 
     // Administrators only: delete matters.

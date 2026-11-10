@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $matter->matter_reference }} | HOME AI</title>
+    <link rel="icon" href="{{ asset('images/centre-seal-64.png') }}" type="image/png">
 
     <style>
         body {

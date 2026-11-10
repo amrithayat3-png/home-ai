@@ -6,11 +6,10 @@
     <body class="min-h-screen bg-white antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
         <div class="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div class="flex w-full max-w-sm flex-col gap-2">
-                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex h-9 w-9 mb-1 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
-                    </span>
-                    <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
+                <a href="{{ route('home') }}" class="flex flex-col items-center gap-3 text-center font-medium" wire:navigate>
+                    <img src="{{ asset('images/centre-seal.png') }}" width="96" height="96" class="size-24 rounded-full" alt="Seal of the Sindh Center For Excellence on Countering Violent Extremism">
+                    <span class="text-base font-semibold leading-snug text-neutral-900 dark:text-white">Sindh Center For Excellence on Countering Violent Extremism</span>
+                    <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ config('app.name', 'HOME AI') }}</span>
                 </a>
                 <div class="flex flex-col gap-6">
                     {{ $slot }}

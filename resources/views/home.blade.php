@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>HOME AI — Executive Intelligence</title>
+    <link rel="icon" href="{{ asset('images/centre-seal-64.png') }}" type="image/png">
 
     <style>
         :root {
@@ -133,6 +134,23 @@
             border: 1px solid rgba(92,169,255,.28);
             box-shadow:
                 0 0 30px rgba(92,169,255,.12);
+        }
+
+        .brand-seal {
+            display: block;
+            width: 64px;
+            height: 64px;
+            margin-bottom: 14px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 0 34px rgba(92,169,255,.25);
+        }
+
+        .brand p.brand-centre {
+            color: var(--text);
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            margin-top: 6px;
         }
 
         .brand-mark span {
@@ -1265,11 +1283,10 @@
 
         <div class="brand">
 
-            <div class="brand-mark">
-                <span>✦</span>
-            </div>
+            <img class="brand-seal" src="{{ asset('images/centre-seal.png') }}" width="64" height="64" alt="Seal of the Sindh Center For Excellence on Countering Violent Extremism">
 
             <h1>HOME AI</h1>
+            <p class="brand-centre">Sindh Center For Excellence on Countering Violent Extremism</p>
             <p>Intelligent Executive Assistant</p>
 
         </div>

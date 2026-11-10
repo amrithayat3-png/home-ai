@@ -573,3 +573,41 @@ button[disabled] {
     .quicknav .qn-search { flex-basis: 100%; max-width: none; margin-left: 0; }
     .quicknav + .topbar { position: static; }
 }
+
+/* ---------- Name and seal of the centre, top of every page ---------- */
+
+.brandbar {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 10px 45px;
+    background: #050e19;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.brandbar .bb-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.brandbar img {
+    flex: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .14);
+}
+
+.brandbar .bb-text { display: flex; flex-direction: column; gap: 2px; }
+.brandbar .bb-name { font-size: 1.05rem; font-weight: 700; line-height: 1.25; letter-spacing: .1px; }
+.brandbar .bb-sub { color: #9fb3cc; font-size: .78rem; letter-spacing: .6px; text-transform: uppercase; }
+
+@media (max-width: 900px) {
+    .brandbar { padding: 8px 14px; }
+    .brandbar img { width: 40px; height: 40px; }
+    .brandbar .bb-name { font-size: .92rem; }
+    .brandbar .bb-sub { font-size: .7rem; }
+}

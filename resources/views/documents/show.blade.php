@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $document->original_name }} | HOME AI</title>
+    <link rel="icon" href="{{ asset('images/centre-seal-64.png') }}" type="image/png">
     <style>
         body { margin: 0; background: #f3f6fb; color: #1d2939; font-family: Arial, sans-serif; }
         .topbar { align-items: center; background: #102a43; color: white; display: flex; justify-content: space-between; padding: 22px 45px; }
@@ -23,6 +24,8 @@
         .btn-light { background: #eaf1fb; color: #175cd3; }
         .success { background: #ecfdf3; color: #027a48; padding: 14px; }
         .error { background: #fef3f2; color: #b42318; padding: 14px; }
+        .btn-danger { background: #d92d20; }
+        .note { color: #667085; font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
         .warn { background: #fffaeb; color: #b54708; padding: 14px; }
         select { border: 1px solid #d0d5dd; border-radius: 6px; font: inherit; min-height: 40px; padding: 9px 11px; }
         .move-form { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
@@ -161,6 +164,15 @@
                 <button class="btn" type="submit">
                     {{ $document->review_status === 'Filed' ? 'Move to Category' : 'Confirm and File' }}
                 </button>
+            </form>
+
+            <h3 class="section-title">Delete this document</h3>
+            <p class="note">Use this for a wrong or duplicate upload. The scanned file and its record are removed for good. A line is kept in the audit trail.</p>
+            <form method="POST" action="{{ route('documents.destroy', $document) }}"
+                  onsubmit="return confirm('Delete {{ addslashes($document->original_name) }} permanently? The file will be removed and this cannot be undone.');">
+                @csrf
+                @method('DELETE')
+                <button class="btn btn-danger" type="submit">Delete document</button>
             </form>
             @endif
         </section>

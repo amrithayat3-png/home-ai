@@ -539,3 +539,23 @@ body.theme-dark .hint {
 body.theme-dark .table-card .count { color: var(--d-muted) !important; }
 body.theme-dark .snippet { color: var(--d-text-2) !important; }
 body.theme-dark .snippet mark { background: rgba(245, 184, 91, .28); color: #ffe3b0; }
+
+/* Same blue as every other button, and a disabled state that is dark, not white */
+body.theme-dark #startButton,
+body.theme-dark #confirmButton,
+body.theme-dark .qn-search button {
+    background: linear-gradient(135deg, #3a95ee, #2476cc) !important;
+    border: 0;
+    color: #fff !important;
+    box-shadow: 0 8px 24px rgba(54, 143, 232, .3), inset 0 1px 0 rgba(255, 255, 255, .25) !important;
+}
+body.theme-dark button:disabled,
+body.theme-dark button[disabled] {
+    background: rgba(255, 255, 255, .08) !important;
+    border: 1px solid rgba(255, 255, 255, .12) !important;
+    box-shadow: none !important;
+    color: var(--d-muted) !important;
+    cursor: not-allowed;
+}
+body.theme-dark button.secondary.small { font-size: 13px; padding: 6px 12px; border-radius: 8px; }
+body.theme-dark .qn-search input { background: rgba(255, 255, 255, .06); }
