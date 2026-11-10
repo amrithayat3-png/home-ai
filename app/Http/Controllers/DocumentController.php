@@ -395,6 +395,11 @@ class DocumentController extends Controller
             $destination = 'documents/'.$analysis['category'].'/'.Str::uuid().'.'.$prepared['extension'];
 
             $stream = fopen($workingCopy, 'rb');
+
+            if ($stream === false) {
+                throw new RuntimeException('The uploaded file could not be read.');
+            }
+
             $saved = $disk->put($destination, $stream);
 
             if (is_resource($stream)) {
@@ -413,7 +418,7 @@ class DocumentController extends Controller
             $linkSource = null;
 
             if ($request->filled('matter_id')) {
-                $matter = Matter::find($request->input('matter_id'));
+                $matter = Matter::find((int) $request->input('matter_id'));
                 $linkSource = $matter ? 'manual' : null;
             }
 
@@ -499,9 +504,9 @@ class DocumentController extends Controller
      */
     private function prepareFormUpload(Request $request): array
     {
-        $file = $request->allFiles()['document'] ?? null;
+        $file = $request->file('document');
 
-        if (! $file) {
+        if (! $file instanceof UploadedFile) {
             throw new UploadRejected('No file reached HOME AI. Please select the file again and retry.');
         }
 
@@ -534,9 +539,16 @@ class DocumentController extends Controller
 
         $extension = $this->safeExtension($file);
 
+        // The name says what the file is, the content must agree (a text file renamed to .pdf is refused).
+        $mime = $this->verifiedMime((string) $file->getRealPath(), $extension);
+
+        if ($mime === null) {
+            throw new UploadRejected('"'.$file->getClientOriginalName().'" is not a real '.strtoupper($extension).' file. The content does not match its type.');
+        }
+
         return [
             'name' => $file->getClientOriginalName(),
-            'mime' => (string) $file->getMimeType(),
+            'mime' => $mime,
             'size' => $file->getSize(),
             'hash' => $hash,
             'extension' => $extension,
