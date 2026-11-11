@@ -24,7 +24,8 @@
         .bulk-card { align-items: center; background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(16,42,67,.08); display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; margin-bottom: 20px; padding: 18px 20px; }
         .bulk-card p { margin: 4px 0 0; color: #667085; font-size: 13px; }
         .bulk-card button { background: #027a48; border: 0; border-radius: 8px; color: white; cursor: pointer; font: inherit; font-weight: bold; padding: 12px 18px; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+        .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+        .tabs a { white-space: nowrap; }
         .tabs a { background: white; border-radius: 999px; color: #344054; font-size: 14px; padding: 8px 16px; text-decoration: none; box-shadow: 0 1px 4px rgba(16,42,67,.08); }
         .tabs a.active { background: #175cd3; color: white; }
         .category-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 18px; }
