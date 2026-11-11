@@ -80,6 +80,21 @@ class BackupCommandTest extends TestCase
         });
     }
 
+    public function test_only_the_apps_own_schema_is_copied(): void
+    {
+        $this->fakeTools();
+
+        $this->artisan('db:backup')->assertExitCode(0);
+
+        Process::assertRan(function (PendingProcess $p) {
+            $command = (array) $p->command;
+
+            return ($command[0] ?? '') === 'pg_dump'
+                && in_array('--schema=public', $command, true)
+                && count(array_filter($command, fn ($part) => str_starts_with((string) $part, '--schema='))) === 1;
+        });
+    }
+
     public function test_a_failed_dump_stores_nothing_and_exits_with_an_error(): void
     {
         $this->fakeTools(dumpExit: 1);

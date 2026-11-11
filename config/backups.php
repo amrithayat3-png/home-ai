@@ -19,6 +19,10 @@ return [
     // The filesystem disk (see config/filesystems.php) that holds the copies.
     'disk' => env('BACKUP_DISK', 'backups'),
 
+    // Which database schemas are copied. Only the app's tables live in "public". Do not add Supabase's own
+    // schemas: their extensions cannot be restored into a normal PostgreSQL database.
+    'schemas' => array_values(array_filter(array_map('trim', explode(',', (string) env('BACKUP_SCHEMAS', 'public'))))),
+
     // Folder inside the bucket.
     'prefix' => env('BACKUP_PREFIX', 'database'),
 

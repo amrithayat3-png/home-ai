@@ -30,8 +30,12 @@ class BackupDatabase extends Command
             $timeout = (int) config('backups.timeout');
 
             // 1. Dump the database to a temporary file (custom format, compressed).
+            // Only the app's own schema is copied. Supabase adds its own schemas and extensions
+            // (vault, graphql and so on) that cannot be restored anywhere but a Supabase project.
+            $schemas = array_map(fn (string $schema) => '--schema='.$schema, (array) config('backups.schemas'));
+
             $dump = Process::env($target->env)->timeout($timeout)->run([
-                'pg_dump', '--format=custom', '--no-owner', '--no-privileges', '--file='.$temp,
+                'pg_dump', '--format=custom', '--no-owner', '--no-privileges', ...$schemas, '--file='.$temp,
             ]);
 
             if (! $dump->successful()) {
