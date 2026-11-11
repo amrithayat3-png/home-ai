@@ -27,6 +27,14 @@
         .tabs { display: flex; gap: 10px; margin-bottom: 16px; }
         .tabs a { background: white; border-radius: 999px; color: #344054; font-size: 14px; padding: 8px 16px; text-decoration: none; box-shadow: 0 1px 4px rgba(16,42,67,.08); }
         .tabs a.active { background: #175cd3; color: white; }
+        .category-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 18px; }
+        .category-card { background: white; border-radius: 12px; box-shadow: 0 1px 6px rgba(16,42,67,.1); color: #1d2939; display: flex; flex-direction: column; gap: 4px; padding: 18px; text-decoration: none; }
+        .category-card.current { outline: 2px solid #175cd3; }
+        .category-card .cat-name { font-weight: bold; font-size: 15px; }
+        .category-card .cat-count { color: #175cd3; font-size: 30px; font-weight: bold; line-height: 1.1; }
+        .category-card .cat-note { color: #667085; font-size: 13px; }
+        .cat-filter { color: #475467; font-size: 14px; margin: 0 0 14px; }
+        .cat-filter a { color: #175cd3; font-weight: bold; margin-left: 8px; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/home-ui.css') }}">
     <link rel="stylesheet" href="{{ asset('css/home-ui-dark.css') }}">
@@ -68,13 +76,38 @@
         @endif
 
         <div class="tabs">
-            <a href="{{ route('documents.index') }}" @class(['active' => ! $onlyReview])>All documents</a>
+            <a href="{{ route('documents.index') }}" @class(['active' => ! $onlyReview && ! $showCategories])>All documents</a>
             <a href="{{ route('documents.index', ['status' => 'review']) }}" @class(['active' => $onlyReview])>Needs review ({{ $waiting }})</a>
+            <a href="{{ route('documents.index', ['view' => 'categories']) }}" @class(['active' => $showCategories])>Categories</a>
         </div>
+
+        @if ($showCategories)
+            <div class="category-grid" id="categories">
+                @foreach ($categoryCards as $card)
+                    <a class="category-card @if ($category === $card['key']) current @endif" href="{{ route('documents.index', ['category' => $card['key']]) }}">
+                        <span class="cat-name">{{ $card['label'] }}</span>
+                        <span class="cat-count">{{ $card['total'] }}</span>
+                        <span class="cat-note">
+                            {{ \Illuminate\Support\Str::plural('document', $card['total']) }}
+                            @if ($card['waiting'] > 0)
+                                &middot; {{ $card['waiting'] }} waiting for review
+                            @endif
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+
+            @if ($category)
+                <p class="cat-filter">
+                    Showing <strong>{{ str($category)->headline() }}</strong> only.
+                    <a href="{{ route('documents.index', ['view' => 'categories']) }}">Show all categories</a>
+                </p>
+            @endif
+        @endif
 
         <div class="table-card">
             @if ($documents->isEmpty())
-                <div class="empty">{{ $onlyReview ? 'Nothing is waiting for review.' : 'No documents have been uploaded yet.' }}</div>
+                <div class="empty">{{ $category ? 'No documents in this category yet.' : ($onlyReview ? 'Nothing is waiting for review.' : 'No documents have been uploaded yet.') }}</div>
             @else
                 <table>
                     <thead>
@@ -94,7 +127,7 @@
                                 <td>
                                     <a class="doc-link" href="{{ route('documents.show', $document) }}">{{ $document->original_name }}</a>
                                 </td>
-                                <td>{{ str($document->category)->headline() }}</td>
+                                <td><a class="doc-link" href="{{ route('documents.index', ['category' => $document->category]) }}">{{ str($document->category)->headline() }}</a></td>
                                 <td>
                                     @if ($document->matter)
                                         <a class="doc-link" href="{{ route('matters.show', $document->matter) }}">{{ $document->matter->matter_reference }}</a>

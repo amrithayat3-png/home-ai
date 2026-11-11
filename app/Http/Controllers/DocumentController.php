@@ -60,13 +60,30 @@ class DocumentController extends Controller
         $threshold = (float) config('documents.bulk_confirm_threshold');
         $onlyReview = $request->query('status') === 'review';
 
+        $category = $request->query('category');
+        $category = is_string($category) && in_array($category, self::CATEGORIES, true) ? $category : null;
+        $showCategories = $category !== null || $request->query('view') === 'categories';
+
         $documents = Document::with(['matter', 'suggestedMatter'])
             ->when($onlyReview, fn ($query) => $query->where('review_status', 'Needs review'))
+            ->when($category, fn ($query) => $query->where('category', $category))
             ->latest()
             ->get();
 
         $waiting = Document::where('review_status', 'Needs review')->count();
         $sure = Document::where('review_status', 'Needs review')->where('confidence', '>=', $threshold)->count();
+
+        // How many documents sit in each category (only what this account may see), and how many of those still wait for review.
+        $totals = Document::query()->selectRaw('category, count(*) as total')->groupBy('category')->pluck('total', 'category');
+        $waitingByCategory = Document::query()->where('review_status', 'Needs review')
+            ->selectRaw('category, count(*) as total')->groupBy('category')->pluck('total', 'category');
+
+        $categoryCards = collect(self::CATEGORIES)->map(fn (string $name) => [
+            'key' => $name,
+            'label' => str($name)->headline()->toString(),
+            'total' => (int) ($totals[$name] ?? 0),
+            'waiting' => (int) ($waitingByCategory[$name] ?? 0),
+        ]);
 
         return view('documents.index', [
             'documents' => $documents,
@@ -74,6 +91,9 @@ class DocumentController extends Controller
             'sure' => $sure,
             'thresholdPercent' => (int) round($threshold * 100),
             'onlyReview' => $onlyReview,
+            'category' => $category,
+            'showCategories' => $showCategories,
+            'categoryCards' => $categoryCards,
         ]);
     }
 

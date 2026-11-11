@@ -138,11 +138,11 @@
 
         .brand-seal {
             display: block;
-            width: 64px;
-            height: 64px;
-            margin-bottom: 14px;
+            width: 96px;
+            height: 96px;
+            margin-bottom: 16px;
             border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 0 34px rgba(92,169,255,.25);
+            box-shadow: 0 0 0 2px rgba(255,255,255,.2), 0 0 24px rgba(92,169,255,.6), 0 0 64px rgba(92,169,255,.3);
         }
 
         .brand p.brand-centre {
@@ -1283,7 +1283,7 @@
 
         <div class="brand">
 
-            <img class="brand-seal" src="{{ asset('images/centre-seal.png') }}" width="64" height="64" alt="Seal of the Sindh Center For Excellence on Countering Violent Extremism">
+            <img class="brand-seal" src="{{ asset('images/centre-seal.png') }}" width="96" height="96" alt="Seal of the Sindh Center For Excellence on Countering Violent Extremism">
 
             <h1>HOME AI</h1>
             <p class="brand-centre">Sindh Center For Excellence on Countering Violent Extremism</p>

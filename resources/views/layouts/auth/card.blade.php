@@ -7,7 +7,7 @@
         <div class="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div class="flex w-full max-w-md flex-col gap-6">
                 <a href="{{ route('home') }}" class="flex flex-col items-center gap-3 text-center font-medium" wire:navigate>
-                    <img src="{{ asset('images/centre-seal.png') }}" width="96" height="96" class="size-24 rounded-full" alt="Seal of the Sindh Center For Excellence on Countering Violent Extremism">
+                    <img src="{{ asset('images/centre-seal.png') }}" width="128" height="128" class="rounded-full" style="width:128px;height:128px;box-shadow:0 0 0 2px rgba(255,255,255,.2),0 0 26px rgba(92,169,255,.6),0 0 70px rgba(92,169,255,.3);" alt="Seal of the Sindh Center For Excellence on Countering Violent Extremism">
                     <span class="text-base font-semibold leading-snug text-neutral-900 dark:text-white">Sindh Center For Excellence on Countering Violent Extremism</span>
                     <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ config('app.name', 'HOME AI') }}</span>
                 </a>

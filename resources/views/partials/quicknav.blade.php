@@ -13,6 +13,7 @@
     <a class="qn-home" href="{{ route('home') }}">&#8962; Home</a>
     <a href="{{ route('matters') }}">Matters</a>
     <a href="{{ route('documents.index') }}">Documents</a>
+    <a href="{{ route('documents.index', ['view' => 'categories']) }}">Categories</a>
     @if (auth()->user()?->canManageWork())
         <a href="{{ route('documents.create') }}">Upload</a>
     @endif
